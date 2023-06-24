@@ -1,0 +1,77 @@
+gitk (Will show you GUI)
+git branch test(will create test branch will all data of master)
+git checkout test (will navigate to test branch)
+git chechout filename(it will take the server copy of that file name and remove your local copy)
+git checkout . (take all the files from server for that branch)
+git checkout -b test2(branch will create and you will navigate o that branch)
+git branch -d test(will delete test branch if and only if your branch is fully merged with master branch)
+git branch -D test(it will forcefully delete your branch)
+
+git init (Initialize the ripository)
+
+git status
+
+git add index.html
+
+git add .
+
+git commit -m "first commit"
+
+git config --global user.email "lekkalakarthik452@gmail.com"
+
+git restore <file>
+
+git commit -a -m "second commit" (adding and commiting)
+
+git log --oneline
+
+git checkout CommitID
+#####################################################
+git switch -c <new-branch-name>
+$ git checkout bc6e7db
+Note: switching to 'bc6e7db'.
+
+You are in 'detached HEAD' state. You can look around, make experimental
+changes and commit them, and you can discard any commits you make in this
+state without impacting any branches by switching back to a branch.
+
+If you want to create a new branch to retain commits you create, you may
+do so (now or later) by using -c with the switch command. Example:
+
+  git switch -c <new-branch-name>
+
+Or undo this operation with:
+
+  git switch -
+
+Turn off this advice by setting config variable advice.detachedHead to false
+
+HEAD is now at bc6e7db second commit
+############################################
+
+git revert d5a347b ( that commit changes will removed but will have previous copy)
+
+git rest 45e4cf1
+git reset 45e4cf1 --hard
+
+
+git branch hotfix  or git checkout  -b hotfix(it will create new branch and check out to that branch)
+
+git branch -a
+
+git checkout hotfix
+
+git branch -d hotfix (to delete the branch) only works if everything got merged
+
+git branch -D hotfix (it willl delete forcefully)
+
+git remote add origin https://github.com/karthik451/git.git
+git push -u origin master
+git remote -v
+git pull origan master
+
+
+C:\Program Files\Git\bin\git.exe
+
+
+git pull origin April

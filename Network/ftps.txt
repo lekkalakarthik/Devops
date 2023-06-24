@@ -1,0 +1,6 @@
+vftpd service restart
+cd  /etc/vftpd
+openssl req -x509 -nodes -days 365 -newkey rsa:1024 -keyout vsftpd.pem -out vsftpd.pem
+
+openssl req -x509 -newkey rsa:2048 -keyout ftps.key -out ftps.crt -days 365 //chatGpt
+

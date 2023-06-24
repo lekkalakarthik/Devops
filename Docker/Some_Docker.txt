@@ -1,0 +1,31 @@
+docker exec -ti 50eba21331c6 /bin/bash
+
+docker run -v "/home/rubicon/postman/collections/:/etc/newman" --entrypoint /bin/bash postman/newman:ubuntu -c "npm i
+-g newman-reporter-htmlextra; newman run AFG-TestSuite.postman_collection.json --environment=AFG-Tests-DEV.postman_env
+ironment.json -r cli,htmlextra"
+
+
+/home/karthik/Assess-MultiBranch_master/afg-ui/e2e
+
+
+docker run -v "/home/karthik/Assess-MultiBranch_master/afg-ui/e2e/:/protractor" --entrypoint /bin/bash webnicer/protractor-headless -c "protractor protractor.conf.js --params.login.password=Welcome12345"
+
+docker run -d -p 5654:5932 --name jasmin webnicer/protractor-headless
+
+/home/karthik/UI_NONPROD_Deploy_AFGPD-1233/afg-ui/e2e
+
+
+docker run -v "/home/karthik/UI_NONPROD_Deploy_AFGPD-1233/afg-ui/e2e/:/protractor" --entrypoint /bin/bash caltha/protractor -c "npm i jasmine-spec-reporter;protractor /protractor/protractor.conf.js --params.login.password=Welcome12345"
+
+Cannot find module 'jasmine-spec-reporter'
+
+
+flexys/docker-protractor
+
+docker run -v "/home/karthik/UI_NONPROD_Deploy_AFGPD-1233/afg-ui/e2e/:/protractor" --entrypoint /bin/bash flexys/docker-protractor -c "npm i jasmine-spec-reporter;protractor /protractor/protractor.conf.js --remote-debugging-port=9222 --params.login.password=Welcome12345"
+
+/usr/bin/chromium-browser
+
+flexys/docker-protractor
+
+docker run -d -p 5654:5932 --name jasmin flexys/docker-protractor

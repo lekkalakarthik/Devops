@@ -1,0 +1,284 @@
+pipeline {
+
+   agent any
+   
+   stages {
+
+    stage('CI : Second JOB') {
+       
+    steps {
+         
+         script { 
+             
+             echo " am printing some thing in second job"
+			 
+			 build job: 'Example', parameters: [string(name: 'BRANCH_NAME', value: "master"),[$class: 'LabelParameterValue', name: 'node', label: 'docker-dev-cluster-0']], propagate: false, wait: false
+              
+        
+      } 
+    } 
+   }
+   }
+}
+
+
+##############EXAMPLE###############################
+def executeAPINONPRODImageBuild(){
+  echo "Am building Prod image"
+}
+
+def executeAPIPRODImageBuild(){
+  echo "Am building Prod image"
+}
+
+
+def executeBuild(PNV){
+
+  if (PNV == "PROD") 
+         {
+          executeAPIPRODImageBuild()
+          
+          
+         } else {
+        // do what ever you want when skipping this build
+          executeAPINONPRODImageBuild() 
+      } 
+  
+  
+}
+
+
+pipeline {
+    environment {
+        def Update_Secret = input(
+            id: 'ProceedDockerSecret', message: 'update Spring Config ?', parameters: [
+            [$class: 'BooleanParameterDefinition', defaultValue: true, description: 'Selecting the checkbox and clicking on proceed will update the Docker Spring Config. \n Selecting proceed without selecting the checkbox will skip updating the spring yml ', name: 'Please confirm ']
+             ])
+		def Run_RXR_SHELL = input(
+            id: 'ProceedRXRShell', message: 'update RXR Shell ?', parameters: [
+            [$class: 'BooleanParameterDefinition', defaultValue: true, description: 'Selecting the checkbox and clicking on proceed will update the Docker Spring Config. \n Selecting proceed without selecting the checkbox will skip updating the spring yml ', name: 'Please confirm ']
+             ])
+		def Run_POSTMAN_Tests = input(
+            id: 'ProceedRXRShell', message: 'Run Postman Tests ?', parameters: [
+            [$class: 'BooleanParameterDefinition', defaultValue: true, description: 'Selecting the checkbox and clicking on proceed will update the Docker Spring Config. \n Selecting proceed without selecting the checkbox will skip updating the spring yml ', name: 'Please confirm ']
+             ])
+		def RUN_UNIT_Tests = input(
+            id: 'ProceedRXRShell', message: 'Run Cucumber Unit Tests ?', parameters: [
+            [$class: 'BooleanParameterDefinition', defaultValue: true, description: 'Selecting the checkbox and clicking on proceed will update the Docker Spring Config. \n Selecting proceed without selecting the checkbox will skip updating the spring yml ', name: 'Please confirm ']
+             ])
+
+    }
+    
+   agent any
+   
+   stages {
+
+    stage('CI : Run RXR-SHELL') {
+       when {
+                expression { return  env.BRANCH_NAME == 'master' } 
+            }
+            agent { label 'docker-dev-cluster-0' }
+    steps {
+         
+         script { 
+             
+             echo " am printing some thing"
+              echo "env.$Run_RXR_SHELL" 
+          
+         if (Run_RXR_SHELL == "true") 
+         {
+          echo "Running RXR-SHELL"
+          
+          
+         } else {
+        // do what ever you want when skipping this build
+          echo "Skipping RXR-SHELL and proceeding to the next stage" 
+      } 
+       executeBuild("PROD")
+    } 
+   }
+   }
+}
+}
+#######################
+def approve(scope, url){
+  milestone()
+  currentBuild.description = "Ready for ${scope} on ${url}"
+  
+  milestone()
+  
+}
+
+def setMetadata(){
+   if (env.BRANCH_NAME == "master") {
+   
+   if (env.ENV == "prod"){
+   env.SNAPSHOT_VERSION = "PROD"
+   
+   }
+    else {
+       env.SNAPSHOT_VERSION = "Master_Nonprod"
+     }
+   }
+	else {
+    env.SNAPSHOT_VERSION = "Non_Master_Non_PROD"
+    
+      }
+}
+
+def executeAPINONPRODImageBuild(){
+  echo "Am building Prod image"
+}
+
+def executeAPIPRODImageBuild(){
+  echo "Am building Prod image"
+}
+
+
+def executeBuild(PNV){
+
+  if (PNV == "PROD") 
+         {
+          executeAPIPRODImageBuild()
+          
+          
+         } else {
+        // do what ever you want when skipping this build
+          executeAPINONPRODImageBuild() 
+      } 
+  
+  
+}
+
+
+pipeline {
+    environment {
+   		def Run_RXR_SHELL = input(
+            id: 'ProceedRXRShell', message: 'update RXR Shell ?', parameters: [
+            [$class: 'BooleanParameterDefinition', defaultValue: true, description: 'Selecting the checkbox and clicking on proceed will update the Docker Spring Config. \n Selecting proceed without selecting the checkbox will skip updating the spring yml ', name: 'Please confirm ']
+             ])
+		
+
+    }
+    
+   agent any
+   
+   stages {
+
+    stage('CI : Run RXR-SHELL') {
+       when {
+                expression { return  env.BRANCH_NAME == 'master' } 
+            }
+            agent { label 'docker-dev-cluster-0' }
+    steps {
+         
+         script { 
+             
+             echo " am printing some thing"
+              echo "env.$Run_RXR_SHELL"
+              build job: 'DS_JOB' propagate: true, wait: true
+          echo "all is well"
+          
+         if (Run_RXR_SHELL == "true") 
+         {
+          echo "Running RXR-SHELL"
+          
+          
+          
+         } 
+         else {
+        // do what ever you want when skipping this build
+          echo "Skipping RXR-SHELL and proceeding to the next stage" 
+      } 
+       executeBuild("PROD")
+	   setMetadata()
+       echo "${env.SNAPSHOT_VERSION}"
+       approve("UAT", "http")
+	   
+    } 
+   }
+   }
+}
+}
+
+########################
+
+cd afg-backend/afg-api
+export JAVA_HOME="/home/rubicon/jdk" 
+export PATH=$JAVA_HOME/bin:$PATH
+source="/home/rubicon/jenkins/CucumberAllTestsRunnerTest.java"
+destination="/home/rubicon/jenkins/workspace/Cucumber_DEV/afg-backend/afg-api/src/test/java/com/afg/loanassmt/util/tests/runner"
+
+set +x
+
+
+cat $DEV_YML > /tmp/applicationDev.yml
+cp $source $destination
+	       
+env 'SPRING_CONFIG_ADDITIONAL-LOCATION=/tmp/applicationDev.yml' mvn -X clean install -Dtest=CucumberAllTestsRunnerTest
+
+                      
+          
+#################
+cd afg-backend/afg-api
+export JAVA_HOME="/home/rubicon/jdk" 
+export PATH=$JAVA_HOME/bin:$PATH
+source="/home/rubicon/jenkins/CucumberAllTestsRunnerTest.java"
+destination="/home/rubicon/jenkins/workspace/Cucumber_Nightly_CI/afg-backend/afg-api/src/test/java/com/afg/loanassmt/util/tests/runner"
+
+set +x
+cat $CI_YML > /tmp/application.yml
+    
+cp $source $destination
+    
+env 'SPRING_CONFIG_ADDITIONAL-LOCATION=/tmp/application.yml' mvn -X clean install -Dtest=CucumberAllTestsRunnerTest
+    
+
+          
+#################
+pwd
+cd afg-backend/afg-api
+export JAVA_HOME="/home/rubicon/jdk" 
+export PATH=$JAVA_HOME/bin:$PATH
+source="/home/rubicon/jenkins/CucumberIntegrationTestsRunnerTest.java"
+destination="/home/rubicon/jenkins/workspace/Run_Integration_Tests/afg-backend/afg-api/src/test/java/com/afg/loanassmt/util/tests/runner"
+
+set +x
+echo "Choice param pass is $Environment"
+
+case $Environment in 
+    #case 1 
+    "CI")  cat $CI_YML > /tmp/application.yml
+    
+           cp $source $destination
+    
+           echo "executing Cucumber Integration tests for CI Environment"
+    
+	       env 'SPRING_CONFIG_ADDITIONAL-LOCATION=/tmp/application.yml' mvn -X clean install -Dtest=CucumberIntegrationTestsRunnerTest
+          
+          ;; 
+           
+      
+    #case 2 
+    "DEV") cat $DEV_YML > /tmp/application.yml
+           
+           echo "executing Cucumber Integration tests for Dev Environment"
+           
+           cp $source $destination
+           
+	       env 'SPRING_CONFIG_ADDITIONAL-LOCATION=/tmp/application.yml' mvn -X clean install -Dtest=CucumberIntegrationTestsRunnerTest
+           
+           ;; 
+            
+    #case 3  
+    "UAT") cat $UAT_YML > /tmp/application.yml
+    
+           cp $source $destination
+           
+           echo "executing Cucumber Integration tests for UAT Environment"
+           
+	       env 'SPRING_CONFIG_ADDITIONAL-LOCATION=/tmp/application.yml' mvn -X clean install -Dtest=CucumberIntegrationTestsRunnerTest
+                           
+           ;;
+          
+esac

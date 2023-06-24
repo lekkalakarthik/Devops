@@ -1,0 +1,556 @@
+def setMetadata(){
+  env.SHORT_COMMIT_ID = sh(returnStdout: true, script: "git log -n 1 --pretty=format:'%h'").trim()
+  env.DATE = sh (
+    script: "date +%Y%m%d",
+    returnStdout: true
+  ).trim()
+  env.BRANCH_NAME="master"
+  if (env.BRANCH_NAME == "master") {
+    env.SNAPSHOT_VERSION = "${env.DATE}-${env.SHORT_COMMIT_ID}"
+    // TODO: Switch master over to using the new host
+    env.CI_JENKINS_LABEL = "docker-ci-cluster-0"
+    //env.SIT_JENKINS_LABEL = "docker-swarm0"
+
+  } else {
+    env.SNAPSHOT_VERSION = "${env.BRANCH_NAME}-${env.DATE}-${env.SHORT_COMMIT_ID}"
+    env.CI_JENKINS_LABEL = "docker-ci-cluster-0"
+   // env.SIT_JENKINS_LABEL = "docker-sit-cluster-0"
+    //*** Showroom environment no longer exists
+    // env.SHOWROOM_JENKINS_LABEL = "docker-showroom-cluster-0"
+  }
+  sh "env"
+}
+
+def codeCheckout(notificationList){
+  checkout scm
+  setMetadata()
+  currentBuild.description = "Code change received on ${env.SNAPSHOT_VERSION}"
+}
+
+
+def executeAPIImageBuild(){
+  dir("afg-backend"){
+    sh """
+    docker build -t rubiconxred/afg-api:${env.SNAPSHOT_VERSION} .
+    """
+  }
+}
+
+
+def executeUIImageBuild(){
+  dir("afg-ui"){
+    sh """
+    docker build -t rubiconxred/afg-ui:${env.SNAPSHOT_VERSION} .
+    """
+  }
+
+}
+
+def executeBuild(){
+
+  executeAPIImageBuild()
+  executeUIImageBuild()
+
+}
+
+
+
+
+
+def setApiJvmArgs(scope){
+  if (scope == "latest") {
+    env.API_JVM_MEMORY = "-Xms1024m -Xmx1024m"
+  } else if (scope == "sit") {
+    env.API_JVM_MEMORY = "-Xms1024m -Xmx1024m"
+
+  } else if (scope == "uat") {
+    env.API_JVM_MEMORY = "-Xms2048m -Xmx2048m"
+  } else if (scope == "prod") {
+    env.API_JVM_MEMORY = "-Xms3072m -Xmx3072m"
+  }
+  echo "Using API JVM memory ${env.API_JVM_MEMORY}"
+}
+
+def deployWithSwarm(scope, replicaSize){
+  //setDockerSubnet(scope)
+   setApiJvmArgs(scope)
+  dir("afg-infra/swarm"){
+    sh """
+    export REPLICA_SIZE=${replicaSize}
+    export DOCKER_ENV=${scope}
+        echo trying to set snapshot
+        docker stack rm afg-app;
+        sleep 60;
+        docker stack deploy  afg-app -c stack.yml
+    echo \"`date` ${SNAPSHOT_VERSION} Build #${env.BUILD_NUMBER}\" >> /home/rubicon/release-history.txt
+    """
+  }
+}
+
+def deployWithCompose(){
+  dir("/home/opc/coex"){
+    sh """
+    docker-compose build
+    docker-compose up -d
+    """
+  }
+}
+
+def wait(url,env){
+  echo "Environment == "+env
+  def app = "api"
+  if (env == "uat" ) {
+    app = "uat-api"
+  }
+
+  def protocol = "https"
+  if (env == "latest" || env == "sit" || env == "showroom") {
+    protocol = "http"
+  }
+
+  sh """
+  echo 'Waiting for API to be up'
+  WAIT_TIME=0
+
+  until \$(curl --output /dev/null --silent --head --fail -k ${protocol}://${app}.${url}/api/v1/ui-metadata); do
+      echo '.'
+      sleep 10
+      WAIT_TIME=\$((WAIT_TIME+1))
+      if [ \$WAIT_TIME -eq 100 ]; then
+        echo 'Timed out waiting for API to be up...'
+        exit 1
+      fi
+  done
+
+  echo 'Done'
+  """
+}
+
+def deploy(scope, url){
+  deploy(scope, url, false, 1, false)
+}
+
+// Note: This details are not really used except when refreshing db via init.yml
+def setDatabaseDetails(scope){
+
+}
+
+def deploy(scope, url, tagRequired, replicaSize, doRefreshDatabase){
+        //Adding lockable resource to chec if stack rm works
+    lock("deploy-${scope}"){
+
+    // For debugging defects in Jenkins slave configuration
+    sh "touch /tmp/${scope}"
+
+    //checkout scm
+   // checkout poll: false, scm: [$class: 'GitSCM', branches: [[name: '*/master']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credenti
+alsId: '745ffa49-ccc6-45af-9b0c-068068aca0a0', url: 'https://github.com/AustralianFinanceGroup/assess.git']]]
+    //checkout poll: false, scm: [$class: 'GitSCM', branches: [[name: '*/master']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credenti
+alsId: '2496e10a-68be-419c-b67f-2e18e17aa013', url: 'https://github.com/AustralianFinanceGroup/assess.git']]]
+        //checkout poll: false, scm: [$class: 'GitSCM', branches: [[name: '*/master']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[cred
+entialsId: '2496e10a-68be-419c-b67f-2e18e17aa013', url: 'https://github.com/AustralianFinanceGroup/assess.git']]]
+        //checkout poll: false, scm: [$class: 'GitSCM', branches: [[name: '*/master']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[cred
+entialsId: 'HTTPS Git Hub-CI-User', url: 'https://github.com/AustralianFinanceGroup/assess.git']]]
+         checkout poll: false, scm: [$class: 'GitSCM', branches: [[name: '*/master']], doGenerateSubmoduleConfigurations: false, extensions: [[$class: 'WipeWorkspace']], submoduleCfg: [], u
+serRemoteConfigs: [[credentialsId: 'HTTPS Git Hub-CI-User', url: 'https://github.com/AustralianFinanceGroup/assess.git']]]
+        //deployWithSwarm(scope, replicaSize)
+
+    registryAuthenticate()
+
+    tagImage("${DOCKER_NAMESPACE}/afg-ui:${SNAPSHOT_VERSION}","${DOCKER_NAMESPACE}/afg-ui:${scope}")
+    tagImage("${DOCKER_NAMESPACE}/afg-api:${SNAPSHOT_VERSION}","${DOCKER_NAMESPACE}/afg-api:${scope}")
+    deployWithSwarm(scope, replicaSize)
+    pushImage("${DOCKER_NAMESPACE}/afg-api:${scope}")
+    pushImage("${DOCKER_NAMESPACE}/afg-ui:${scope}")
+
+    // TODO: Add API tests
+
+    // Temporarily commented out until we determine which urls to wait for
+   // wait(url,scope)
+
+    currentBuild.description = "Deploy success on ${scope} <a href=\"https://${url}\" target=\"_blank\">${SNAPSHOT_VERSION}</a>"
+
+   // slackSend (color: '#39a151', message: "${scope} has been successfully restart at ${url}")
+
+    // For debugging defects in Jenkins slave configuration
+    sh "rm /tmp/${scope}"
+  }
+
+}
+
+def tagForRegistryPublish(){
+  sh """
+  docker tag rubiconxred/afg-api:${SNAPSHOT_VERSION} ${DOCKER_NAMESPACE}/afg-api:${SNAPSHOT_VERSION}
+  docker tag rubiconxred/afg-ui:${SNAPSHOT_VERSION} ${DOCKER_NAMESPACE}/afg-ui:${SNAPSHOT_VERSION}
+
+
+  """
+}
+
+def pushSnapshot(){
+  tagForRegistryPublish()
+  registryAuthenticate()
+  pushImage("${DOCKER_NAMESPACE}/afg-ui:${SNAPSHOT_VERSION}")
+  pushImage("${DOCKER_NAMESPACE}/afg-api:${SNAPSHOT_VERSION}")
+  currentBuild.description = "Snapshot pushed"
+}
+
+
+
+def approve(scope, url){
+  milestone()
+  currentBuild.description = "Ready for ${scope} on ${url}"
+  input(message: "Is this good to go to the ${scope}?", ok: 'Yes')
+  milestone()
+  slackSend (color: '#FF0000', message: "Please be patient while ${scope} is being restarted at ${url}")
+}
+
+def notifyBuild(String buildStatus = 'STARTED') {
+  // build status of null means successful
+  buildStatus =  buildStatus ?: 'SUCCESS'
+
+  // Default values
+  def colorName = 'RED'
+  def colorCode = '#FF0000'
+
+  def buildMessage = "Unknown"
+  if (buildStatus == 'FAILURE') {
+    buildMessage = "Failure"
+  } else if (buildStatus == 'SUCCESS'){
+    buildMessage = "Success"
+  } else if (buildStatus == 'RESOLVED') {
+    buildMessage = "Back to normal"
+  } else if (buildStatus == 'ABORTED') {
+    buildMessage = "Aborted due to timeout or superseding"
+    // Skipping aborted messages to prevent spam to slack
+    return
+  } else if (buildStatus == 'STARTED') {
+    buildMessage = "Started"
+  } else if (buildStatus.startsWith("WAITING_")){
+    buildMessage = "Ready for "+buildStatus.split("_")[1]
+  }
+
+  def subject = "${buildMessage}: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]'"
+  def summary = "${subject} (${env.BUILD_URL})"
+
+  // Override default values based on build status
+  if (buildStatus == 'STARTED') {
+    color = 'YELLOW'
+    colorCode = '#FFFF00'
+  } else if (buildStatus == 'SUCCESS' || buildStatus == 'RESOLVED' || buildStatus.startsWith("WAITING_")) {
+    color = 'GREEN'
+    colorCode = '#39a151'
+  } else {
+    color = 'RED'
+    colorCode = '#FF0000'
+  }
+  // Send notifications
+  //slackSend (color: colorCode, message: summary)
+}
+
+def notifyPromotion(envName){
+  def previousResult = currentBuild.previousBuild?.result
+  if (previousResult && previousResult != currentBuild.result) {
+    echo "Sending promotion notification to slack"
+    notifyBuild('WAITING_'+envName)
+  }
+}
+
+def notifyBackToNormal(){
+  def previousResult = currentBuild.previousBuild?.result
+  if (previousResult && previousResult != currentBuild.result) {
+    echo "Sending back to normal message to slack"
+    notifyBuild('RESOLVED')
+  }
+}
+
+def tag(envName){
+    tagName = getTag(envName)
+    checkout scm
+    withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'Bitbucket-CI-User', usernameVariable: 'GIT_USERNAME', passwordVariable: 'GIT_PASSWORD']]) {
+        sh("git config --global user.email \"support@rubiconred.com\"");
+        sh("git config --global user.name \"rubiconred-ci-user\"");
+        env.GIT_REPOSITORY = sh (
+          script: "basename -s .git `git config --get remote.origin.url`",
+          returnStdout: true
+        ).trim()
+        sh("git tag -f -a '${tagName}' -m '${tagName}'")
+        sh("git push --force https://${env.GIT_USERNAME}:${env.GIT_PASSWORD}@bitbucket.org/serviceco/${env.GIT_REPOSITORY}.git --tags")
+    }
+    return tagName
+}
+
+def getTag(tagPrefix){
+  def tagDate = sh (
+        script: "date +%Y%m%d",
+        returnStdout: true
+  ).trim()
+  return tagPrefix+"-"+tagDate
+}
+
+def registryAuthenticate(){
+  withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'DockerHub-CI-User', usernameVariable: 'DOCKER_HUB_USERNAME', passwordVariable: 'DOCKER_HUB_PASSWORD']]) {
+      retry(10) {
+        sh("docker login -u ${env.DOCKER_HUB_USERNAME} -p ${env.DOCKER_HUB_PASSWORD}")
+      }
+  }
+}
+
+def pullImage(imageName){
+    retry(10) {
+        sh("docker pull ${imageName}")
+    }
+}
+
+def pushImage(imageName){
+    retry(10) {
+        sh("docker push ${imageName}")
+    }
+}
+
+def tagImage(fromImage,toImage){
+    sh("docker tag ${fromImage} ${toImage}")
+}
+
+def prepareImages(scope){
+  registryAuthenticate()
+  pullImage("${DOCKER_NAMESPACE}/afg-ui:${SNAPSHOT_VERSION}")
+   pullImage("${DOCKER_NAMESPACE}/afg-api:${SNAPSHOT_VERSION}")
+
+}
+
+pipeline {
+    agent none
+    environment {
+
+        JENKINS_SERVER_HOST = "http://prd-deploy-1.oacsprd.afg"
+
+        CI_SERVER_HOST = "assessui-1.oacsdev.afg"
+        //SIT_SERVER_HOST = "TBD"
+        // UAT_SERVER_HOST = "TBD"
+        //PROD_SERVER_HOST = "TBD"
+
+        NOTIFICATION_LIST = "satya.r@rubiconred.com,sushil.vishwanathan@rubiconred.comconred.com"
+
+        DOCKER_TIMEZONE = "Australia/West"
+        DOCKER_NAMESPACE = "rubiconxred"
+
+    }
+    options {
+        skipDefaultCheckout()
+        timestamps()
+    }
+    stages {
+      stage('build'){
+        agent { label 'docker' }
+        steps {
+          codeCheckout(env.NOTIFICATION_LIST)
+                        lock('build-afg'){
+            executeBuild()
+          }
+                }
+        }
+      stage('push snapshot'){
+        agent { label 'docker' }
+        steps {
+          lock('push-afg'){
+            pushSnapshot()
+          }
+        }
+      }
+
+      stage('deploy-to-ci'){
+                agent { label 'docker-ci-cluster-0' }
+        steps {
+          prepareImages("latest")
+          deploy("latest", env.CI_SERVER_HOST)
+          // schemaspy
+        }
+      }
+    /*    stage('preparing for sit'){
+        agent { label 'docker-sit-cluster-0' }
+        steps {
+          prepareImages("sit")
+        }
+      }
+      stage('ready for sit?'){
+        agent none
+        steps {
+          notifyPromotion("SIT")
+          approve("sit", env.SIT_SERVER_HOST)
+        }
+      }
+    stage('deploy to sit'){
+        agent { label 'docker-sit-cluster-0' }
+        steps {
+          deploy("sit", env.SIT_SERVER_HOST, true, 1, false)
+        }
+      }
+      //*** Showroom environment no longer exists
+      // stage('preparing for showroom'){
+      //   agent { label 'docker-showroom-cluster-0' }
+      //   steps {
+      //     prepareImages("showroom")
+      //   }
+      // }
+      // stage('ready for showroom?'){
+      //   agent none
+      //   steps {
+      //     notifyPromotion("Showroom")
+      //     approve("showroom", env.SHOWROOM_SERVER_HOST)
+      //   }
+      // }
+      // stage('deploy to showroom') {
+      //   agent { label 'docker-showroom-cluster-0' }
+      //   steps {
+      //     deploy("showroom", env.SHOWROOM_SERVER_HOST, true, 1, false)
+      //   }
+      // }
+      stage('preparing for uat'){
+        parallel {
+                  stage('preparing cluster-0') {
+            agent { label 'docker-uat-cluster-0' }
+            steps {
+              prepareImages("uat")
+            }
+          }
+          stage('preparing cluster-1') {
+            agent { label 'docker-uat-cluster-1' }
+            steps {
+              prepareImages("uat")
+            }
+          }
+          stage('preparing cluster-2') {
+            agent { label 'docker-uat-cluster-2' }
+            steps {
+              prepareImages("uat")
+            }
+          }
+          stage('preparing cluster-3') {
+            agent { label 'docker-uat-cluster-3' }
+            steps {
+              prepareImages("uat")
+            }
+          }
+        }
+      }
+      stage('ready for uat?'){
+        agent none
+        steps {
+          notifyPromotion("UAT")
+          approve("uat", env.UAT_SERVER_HOST)
+        }
+      }
+      stage('deploy to uat') {
+        agent { label 'docker-uat-cluster-0' }
+        steps {
+          deploy("uat", env.UAT_SERVER_HOST, true, 4, false)
+        }
+      }
+      stage('preparing for prod'){
+        parallel {
+          stage('preparing cluster-0') {
+            agent { label 'docker-prod-cluster-0' }
+            steps {
+              prepareImages("prod")
+            }
+          }
+          stage('preparing cluster-1') {
+            agent { label 'docker-prod-cluster-1' }
+            steps {
+              prepareImages("prod")
+            }
+          }
+          stage('preparing cluster-2') {
+            agent { label 'docker-prod-cluster-2' }
+            steps {
+              prepareImages("prod")
+            }
+          }
+          stage('preparing cluster-3') {
+            agent { label 'docker-prod-cluster-3' }
+            steps {
+              prepareImages("prod")
+            }
+          }
+          stage('preparing cluster-4') {
+            agent { label 'docker-prod-cluster-4' }
+            steps {
+              prepareImages("prod")
+            }
+          }
+          stage('preparing cluster-5') {
+            agent { label 'docker-prod-cluster-5' }
+            steps {
+              prepareImages("prod")
+            }
+          }
+          stage('preparing cluster-6') {
+            agent { label 'docker-prod-cluster-6' }
+            steps {
+              prepareImages("prod")
+            }
+          }
+          stage('preparing cluster-7') {
+            agent { label 'docker-prod-cluster-7' }
+            steps {
+              prepareImages("prod")
+            }
+          }
+          stage('preparing cluster-8') {
+            agent { label 'docker-prod-cluster-8' }
+            steps {
+              prepareImages("prod")
+            }
+          }
+          stage('preparing cluster-9') {
+            agent { label 'docker-prod-cluster-9' }
+            steps {
+              prepareImages("prod")
+            }
+          }
+        }
+      }
+      stage('ready for prod?'){
+        agent none
+        steps {
+          notifyPromotion("PROD")
+          approve("prod", env.PROD_SERVER_HOST)
+        }
+      }
+      stage('deploy to prod') {
+        agent { label 'docker-prod-cluster-0' }
+        steps {
+          deploy("prod", env.PROD_SERVER_HOST, true,10, false)
+        }
+      }*/
+    }
+    post {
+    /*  success {
+        script {
+          notifyBackToNormal()
+        }
+      } */
+      always {
+        node('docker'){
+          script {
+              if (currentBuild.result == null) {
+                  currentBuild.result = 'SUCCESS'
+              } else if  (currentBuild.result != 'SUCCESS') {
+                  currentBuild.description = "<b>Failed</b>"
+              }
+              notifyBuild(currentBuild.result)
+          }
+    /*      step([$class: 'Mailer',
+            notifyEveryUnstableBuild: true,
+            recipients: env.NOTIFICATION_LIST,
+            sendToIndividuals: true]) */
+        }
+      }
+      failure {
+        script {
+          currentBuild.description = "<b>Failed</b>"
+        }
+      }
+    }
+}

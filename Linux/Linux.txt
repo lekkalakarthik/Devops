@@ -1,0 +1,25 @@
+ https://www.youtube.com/watch?v=RBR6FnugzOg
+ 
+ awk -F ":" '{print $1}' /etc/passwd
+awk -F ":" '{print $1"**" $5"**" $7}' /etc/passwd
+ awk 'BEGIN{FS=":"; OFS="##"} {print $1,$5,$7}' /etc/passwd  //it will convertfield separater : to Output field saparater #
+ awk 'BEGIN{FS=":"; OFS="\t"} {print $1,$5,$7}'
+awk -F='>' '/karthik/ {print $1}' sample2.html //line is karthik<script data-ezscrex='false' data-pagespeed-no-defer data-cfasync='false'>  //it will searck karthik string and print column for all the lines
+awk -F='>' '/^#/ {print $1}'
+
+
+/usr/libexec
+ps -ef | awk '{if (NF =="/libexec/") print $0} 
+awk 'BEGIN{ for(i=0; i<=10; i++) print "Seure root of " i " is" i*i}'
+awk 'BEGIN{ for(i=0; i<=10; i++) print "Seure root of", i, "is", i*i}' , will give you space means sapareate the string
+awk '$2 ~ /^[a,c]/ {print $0}' text1  // it will search secon field with default field sparater and finds the string which starts with a, c if it matches will print all the line
+
+awk {print substr($0, 4) }' // it will not print first 4 charecters
+ 
+ 
+ ####################XARGS###############
+ 
+ seq 5
+ seq 5 | xargs echo  // by default xargs iput command is echo
+ 
+ 

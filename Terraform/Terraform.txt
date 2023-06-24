@@ -1,0 +1,125 @@
+https://www.youtube.com/watch?v=qW98IQOOOmc&list=PLFoX_td1iTj-eHQsckhwnxTYm0GgHWiu0
+
+https://developer.hashicorp.com/terraform/language/functions
+
+Mainly we have 3 types of langauages
+1) java. .net.python
+2) Shell, Bash, powershell
+3) html. xml, json, json (mostly json and YAMl used for giving values as key value pairs)
+
+sudo yum install -y yum-utils
+sudo yum-config-manager --add-repo https://rpm.releases.hashicorp.com/RHEL/hashicorp.repo
+sudo yum -y install terraform
+
+terraform --version
+
+int terraform we are not using json lanuage it is HCL means hashicrop lanuage. it is more simple than json
+
+terraform init // terraform supports toomany clous. So, we need to download required plugins to comunicate with cloud
+
+#######Terraform Components###################
+
+1) Providers 
+
+we need to connect with the cloud that we want to work. For that hashi crop developed varios plugins (providers). terraform will download these plugings befor execution of the terraform code. terraform init will use to download the required providers. we can mention this in main.tf file.
+
+Providers block of code will start with "provider" keyword.
+
+
+2) Resources
+
+It is main part of our desire . It can be a vertual network, storage devide, LB  it can be any thing. 
+
+resource block will start with resource keyword
+
+Syntax:
+
+resource <ReSOURCE TYPE> <NAME of THIS BLOCK>
+
+{
+
+BLOCK of RESOURCE CODE
+
+}
+
+
+3) Vairiables 
+
+Variable makes our terraform configiurations more dymemic a saperate variables.tf file need to create in working directory.
+terraform.tfvars
+
+4) state file
+
+teraform will create a state file once it deploy the configurations. I will use in future purpose to create/destroy or update the resources. it compare current state with desire state.  it will create terrafor.tfstate file in working directory.
+
+If we lose the terrafor.tfstate we have option to tell terraform that some resources already present via console.this is advanced consept.
+
+5) Provisioner
+
+provisioners are simmilar to configuration managment tools. But, Not replacement of configuration managment tools. These will run aditional  tasks or steps when resource is created or destroyed.
+
+
+terraform restore:
+
+if we lost teraform state file we can get it back with import command. in terraform document we will have import section for that perticular resource.
+
+terraform backend:
+
+terraform backend is used to store our local state files to remore blob storage ( S3, Object storage) 
+
+terraform module:
+
+We will place all source code in this directory like golden code. and we will create differnt terraform files like dev.tf, uat.tf and prod.tf. with this we are eliminating terraform.tfvars file useage. we will give all thre required variable information in uat.tf file it is like environment specific variables. Modules are used for teplatetized format.
+
+terraform destroy --target module.module_prod  // we can deleted only traget module
+terraform destroy --target module.module_prod // it will create only targeted module resources
+
+terraform datasources:
+
+if we create resouce via console or API call and if we want to use that resouce in our terraform we can do that with terraform resource
+
+if a company already uhaving a VPC and subnect  and we need to create one more instance in this case we need to use exsitind re sources for this one we need to use datasources. if we give destroy it will not delete exsisting resources.
+
+terraform locals or local vairables:
+
+if you see terrform code the values of most of the componets are very lenthy and most of the time we need to repet this dat in terraform code. lets take we need to give resource group name in almost all resources we create in azure. for this we need to pass resource goupr name most of the time in this case we cal use local viarles to create a viarable for this and use in rest of the code.
+
+locals are strict to that file only can not use in other files
+
+terraform console
+
+terraform fmt
+
+output:
+
+We can print the output with this block of code
+output "test" {
+value = lower(join("",["KARTHIK"],[LEkkala]))
+}
+
+Terraform provisioners: With this we can configure newlly created instance. it is not same as configuration managment toll but it can some level of configuration
+
+we have 3 types of provisioners
+
+1) File  to copy a file to new system
+2) Local-Exec > to get nelly creted resouce information
+3) Remote-Exec > to execute remote command
+
+terraform workspace:
+if we work with modukles we will have 3 terraform files (Dev, test and PROD) with same block of code in modules fleder (maint.tf)
+in this case all environments state file will be stored in same sate file. to elemanate this terraform give workspace concept
+like in kuberneties. but we need to make we swith to correct work space befor executing. that is why it is not recommended in Live environment. insted we can have different folders for 3 environments
+
+terraform workspace list
+terraform workspace new test
+terraform workspace select default
+terraform workspace show
+terraform apply -var-file dev.tfvars
+########
+
+terraform meta-aruments we have 6 or more in terraform 
+
+https://developer.hashicorp.com/terraform/language/meta-arguments/depends_on
+
+${count.index}
+

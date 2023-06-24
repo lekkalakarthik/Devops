@@ -1,0 +1,622 @@
+// Imports used in notify function
+import net.sf.json.JSONArray;
+import net.sf.json.JSONObject;
+
+// Global Variables
+env.ECR_REPOSITORY = '067343992071.dkr.ecr.us-west-2.amazonaws.com'
+env.AMI_JAVA_HOME_BIN = '/usr/lib/jvm/java-1.8.0-openjdk-1.8.0.171-7.b10.37.amzn1.x86_64/bin'
+
+if (env.BRANCH_NAME.startsWith("PR-")) {
+   currentBuild.result = 'SUCCESS'
+   return
+}
+
+pipeline {
+    agent {
+        label 'centos'
+    }
+
+    environment {
+        // This is set to reduce the amount of junk logged when attempting to download files.
+        MAVEN_OPTS = '-Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn'
+    }
+
+    // following options will be applied on all jobs based on below script
+    options {
+
+        buildDiscarder(logRotator(daysToKeepStr: '20', numToKeepStr: '30', artifactDaysToKeepStr: '5', artifactNumToKeepStr: '1'))
+
+        // ignore stages once the build is unstable in a given stage
+        skipStagesAfterUnstable()
+
+        //ensures code is not checked out by default
+        // you need to use checkout scm command consciously
+        skipDefaultCheckout(true)
+
+        //using the Timestamper plugin we can add timestamps to the console log
+        timestamps()
+    }
+
+    stages {
+
+        stage('initialize:bootstrap') {
+
+            steps {
+                // clean up
+                deleteDir()
+                // check out
+                checkout scm
+                printBaseInfo()
+            }
+            post {
+                failure {
+                    echo "cleaning up"
+                    deleteDir()
+                }
+
+            }
+        }
+
+        stage('build:myst') {
+            steps {
+                buildMyST()
+                runInstallerTests()
+            }
+        }
+
+        stage('distribute:myst') {
+            steps {
+                pushMyST()
+            }
+        }
+
+        stage('test:myst') {
+            steps {
+                lock("myst-studio-${env.BRANCH_TAG}-tests"){
+                    createStack()
+                    runAcceptanceTests()
+                    runUITests()
+                    destroyStack()
+                    // No longer running the regression tests
+                    // in pipeline, this has to be run outside the pipeline
+                    // DEPRECATED runIntegrationTests()
+                    // DEPRECATED destroyStack()
+                }
+            }
+        }
+
+    }
+
+    post {
+        always {
+          script {
+              if (currentBuild.result == null) {
+                  currentBuild.result = 'SUCCESS'
+              }
+          }
+          step([$class: 'Mailer',
+            notifyEveryUnstableBuild: true,
+            recipients: env.ENGINEERING_DEV_EMAILS,
+            sendToIndividuals: true])
+        }
+    }
+
+}
+
+if (env.BRANCH_NAME == "master" || env.BRANCH_NAME.startsWith("hotfix")) {
+    stage('release:myst') {
+        timeout(time: 14, unit: 'DAYS') {
+           userInput = input(message: "Please approve release by entering release version", ok: 'Release',
+                      parameters: [
+                          stringParam(defaultValue: '', name: 'Release Version', description: 'REMINDER: Have you remembered to update release notes?'),
+                          booleanParam(defaultValue: false, name: 'Release Candidate', description: 'Choose this to ensure it\'s not marked as latest')])
+        }
+        isReleaseCandidate = userInput['Release Candidate']
+
+        env.RELEASE_VERSION = userInput['Release Version']
+        if (env.RELEASE_VERSION == ''){
+            error("Invalid release version")
+        }
+        if (isReleaseCandidate) {
+            echo ("Is candidate")
+           if (!env.RELEASE_VERSION.toLowerCase().contains("-rc")) {
+               error("Not a valid release candidate format. Expected -rc in the name")
+            }
+        } else {
+            echo ("Not candidate")
+            if (env.RELEASE_VERSION.toLowerCase().contains("rc")) {
+               error("Not a valid stable release. It should not have rc in the name")
+            }
+        }
+        releaseSummary = ""
+        node('centos') {
+            lock('myst-studio-release'){
+                withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'rubiconred-ci-user', usernameVariable: 'GIT_USERNAME', passwordVariable: 'GIT_PASSWORD']]) {
+                    sh "curl -u ${env.GIT_USERNAME}:${env.GIT_PASSWORD} https://api.bitbucket.org/1.0/repositories/rubiconred/myst-website/raw/HEAD/Announcement.slack -o Announcement.slack"
+                }
+                releaseSummary = sh(script: "cat Announcement.slack", returnStdout: true).trim()
+                echo releaseSummary
+                tagMyST()
+                releaseMyST(!isReleaseCandidate)
+                currentBuild.description = env.RELEASE_VERSION
+            }
+        }
+        notify(isReleaseCandidate, env.RELEASE_VERSION, releaseSummary)
+    }
+}
+
+def notify(isReleaseCandidate, version, releaseSummary){
+  attachments = constructAttachment(version)
+  if (isReleaseCandidate) {
+    slackSend (channel: "#announcements", message: "Rubicon Red have just published a new MyST Release Candidate.")
+    slackSend (channel: "#announcements", attachments: attachments.toString())
+    slackSend (channel: "#announcements", message: releaseSummary)
+    emailext body: 'This means that the binaries and release notes are available on the website and in ECR, but are not marked as latest', subject: "MyST ${version} is now generally available as a release candidate" , to: 'myst.support@rubiconred.com,'+env.ENGINEERING_DEV_EMAILS
+  } else {
+    slackSend (channel: "#announcements", message: "Rubicon Red have just published a new MyST Release.")
+    slackSend (channel: "#announcements", attachments: attachments.toString())
+    slackSend (channel: "#announcements", message: releaseSummary)
+    emailext body: 'This means that the binaries and release notes are available on the website and in ECR, and that the release is marked as latest', subject: "MyST ${version} is now generally available" , to: 'myst.support@rubiconred.com,'+env.ENGINEERING_DEV_EMAILS
+  }
+}
+
+def constructAttachment(version){
+  JSONObject attachment = new JSONObject();
+  attachment.put("fallback","MyST "+version);
+  attachment.put("title","MyST "+version);
+  attachment.put("title_link","http://docs.rubiconred.com/release-notes.html");
+  attachment.put("text","");
+  attachment.put("footer","Automated notification from MyST Continuous Delivery");
+  JSONArray attachments = new JSONArray();
+  attachments.add(attachment);
+  println attachments.toString()
+  return attachments
+}
+
+/**
+ * verify if all required build dependencies are available
+ */
+def printBaseInfo() {
+
+    sh 'printenv'
+    sh '''
+            #!/bin/bash
+            # if java is available
+            if type -p java; then
+                echo found java executable in PATH
+                _java=java
+            elif [[ -n "\$JAVA_HOME" ]] && [[ -x "\$JAVA_HOME/bin/java" ]];  then
+                echo found java executable in JAVA_HOME
+                _java="\$JAVA_HOME/bin/java"
+            else
+                echo "no java"
+            fi
+
+            if [[ "\$_java" ]]; then
+                version=$("\$_java" -version 2>&1 | awk -F '"' '/version/ {print $2}')
+                echo java version: "\$version"
+            fi
+
+            # find if node is available
+            if type -p node; then
+                echo found node executable in PATH
+                _node=node
+            else
+                echo "no node"
+            fi
+
+            if [[ "\$_node" ]]; then
+                version=$("\$_node" --version 2>&1)
+                echo node version: "\$version"
+            fi
+
+
+            # find if npm is available
+            if type -p npm; then
+                echo found node executable in PATH
+                _npm=npm
+            else
+                echo "no npm"
+            fi
+
+            if [[ "\$_npm" ]]; then
+                version=$("\$_npm" --version 2>&1)
+                echo npm version: "\$version"
+            fi
+
+            # find if mvn is available
+            if type -p mvn; then
+                echo found mvn executable in PATH
+                _mvn=mvn
+            else
+                echo "no mvn"
+            fi
+
+            if [[ "\$_mvn" ]]; then
+                version=$("\$_mvn" -version 2>&1)
+                echo mvn version: "\$version"
+            fi
+
+            # find if git is available
+            if type -p git; then
+                echo found git executable in PATH
+                _git=git
+            else
+                echo "no git"
+            fi
+
+            if [[ "\$_git" ]]; then
+                version=$("\$_git" --version 2>&1)
+                echo git version: "\$version"
+            fi
+
+            # Verify jar exists (this is required at release time)
+            ${AMI_JAVA_HOME_BIN}/jar || [[ $? -eq 1 ]]
+        '''
+
+    // print out important information to console
+    echo "branch: " + env.BRANCH_NAME
+    echo "build_tag: " + env.BUILD_TAG
+    echo "node_name: " + env.NODE_NAME
+
+    env.BRANCH_TAG = sh (
+          script: "echo \${BRANCH_NAME} | cut -d'-' -f1-2",
+          returnStdout: true
+    ).trim()
+
+    env.DATE = sh (
+          script: "date +%Y%m%d",
+          returnStdout: true
+    ).trim()
+
+    env.SHORT_COMMIT_ID = sh(returnStdout: true, script: "git log -n 1 --pretty=format:'%h'").trim()
+    echo "commit_id:" + env.SHORT_COMMIT_ID
+
+    if (env.BRANCH_NAME == "master" || env.BRANCH_NAME.startsWith("hotfix")) {
+        env.MYST_VERSION = "RC-${env.DATE}-${env.SHORT_COMMIT_ID}"
+    } else {
+        env.MYST_VERSION = env.BRANCH_TAG
+    }
+}
+
+def buildMyST() {
+    try {
+        lock("myst-studio-${env.BRANCH_TAG}"){
+            sh """
+            mvn -B versions:set -DnewVersion=${env.BRANCH_TAG}
+            cd myst-cli/myst-jenkins-plugin
+            mvn -B versions:set -DnewVersion=${env.BRANCH_TAG}
+            cd ../..
+            cd fc-parent/fc-sdk/fc-myst-studio-jenkins-plugin-light
+            mvn -B versions:set -DnewVersion=${env.BRANCH_TAG}
+            cd ../fc-studio-sdk-payload
+            mvn -B versions:set -DnewVersion=${env.BRANCH_TAG}
+            cd ../fc-studio-sdk-transport
+            mvn -B versions:set -DnewVersion=${env.BRANCH_TAG}
+            """
+            sh "mvn clean install -Dci.build.number=${env.DATE}-${env.SHORT_COMMIT_ID} -P generate-swagger-doc"
+
+            if (env.BRANCH_NAME == "master" || env.BRANCH_NAME.startsWith("hotfix")) {
+                sh """
+                mvn -B versions:set -DnewVersion=RC
+                cd myst-cli/myst-jenkins-plugin
+                mvn -B versions:set -DnewVersion=RC
+                cd ../..
+                cd fc-parent/fc-sdk/fc-myst-studio-jenkins-plugin-light
+                mvn -B versions:set -DnewVersion=RC
+                cd ../fc-studio-sdk-payload
+                mvn -B versions:set -DnewVersion=RC
+                cd ../fc-studio-sdk-transport
+                mvn -B versions:set -DnewVersion=RC
+                """
+                sh "mvn -B clean install -Dci.build.number=${env.DATE}-${env.SHORT_COMMIT_ID} -P generate-swagger-doc"
+                // Archiving no longer needed
+                // archiveArtifacts artifacts: '**/target/*.jar', fingerprint: true
+            }
+            currentBuild.description = "${env.DATE}-${env.SHORT_COMMIT_ID}"
+        }
+    } catch (err) {
+        throw err
+    } finally {
+        step([$class: 'JUnitResultArchiver', testResults: '**/TEST-*.xml'])
+        //publishHTML([allowMissing: false, alwaysLinkToLastBuild: false, keepAll: false, reportDir: '', reportFiles: 'index.html', reportName: 'HTML Report', reportTitles: ''])
+        //findbugs canComputeNew: false, defaultEncoding: '', excludePattern: '', healthy: '', includePattern: '', isRankActivated: true, pattern: '', unHealthy: ''
+        archiveArtifacts artifacts: 'fc-parent/fc-backend/fc-rest-api/target/jaxrs-analyzer/swagger.json', fingerprint: false
+    }
+
+}
+
+def runInstallerTests() {
+    sh """
+    cd fc-parent/fc-distribution/fc-installer
+    ./test.sh
+    """
+}
+
+def pushMyST() {
+    if (env.BRANCH_NAME == "master" || env.BRANCH_NAME.startsWith("hotfix")) {
+        sh """
+        REPOSITORY="${env.ECR_REPOSITORY}/myst-studio:RC"
+        TAG_REPOSITORY="${env.ECR_REPOSITORY}/myst-studio:RC-${env.DATE}-${env.SHORT_COMMIT_ID}"
+        cd fc-parent
+        docker build -t \${REPOSITORY} -f Dockerfile-myststudio-base .
+        \$(aws ecr get-login --no-include-email --region us-west-2)
+        docker tag \${REPOSITORY} \${TAG_REPOSITORY}
+        docker push \${TAG_REPOSITORY}
+        docker push \${REPOSITORY}
+        docker rmi \${TAG_REPOSITORY}
+        docker rmi \${REPOSITORY}
+        aws s3 cp fc-frontend/fc-user-guide/target/fc-user-guide-RC.war s3://rxr-myst/release/rc/fc-user-guide-RC-${env.DATE}-${env.SHORT_COMMIT_ID}.war
+        aws s3 cp fc-sdk/fc-myst-studio-jenkins-plugin-light/target/fc-myst-studio-jenkins-plugin-light.hpi s3://rxr-myst/release/rc/fc-myst-studio-jenkins-plugin-light-RC-${env.DATE}-${env.SHORT_COMMIT_ID}.hpi
+        aws s3 cp fc-distribution/fc-installer/target/fc-installer-RC.jar s3://rxr-myst/release/rc/fc-installer-RC-${env.DATE}-${env.SHORT_COMMIT_ID}.jar
+        aws s3 cp fc-sdk/fc-studio-sdk-transport/target/fc-studio-sdk-transport-RC-jar-with-dependencies.jar s3://rxr-myst/release/rc/fc-studio-sdk-transport-RC-${env.DATE}-${env.SHORT_COMMIT_ID}-jar-with-dependencies.jar
+        cd ..
+        aws s3 cp myst-cli/myst-installer/target/myst-installer-RC.jar s3://rxr-myst/release/rc/myst-installer-RC-${env.DATE}-${env.SHORT_COMMIT_ID}.jar
+        aws s3 cp myst-cli/myst-impl/target/rpm/myst/RPMS/x86_64/myst-RC-1.x86_64.rpm s3://rxr-myst/release/rc/myst-impl-RC-${env.DATE}-${env.SHORT_COMMIT_ID}-rpm.rpm
+        aws s3 cp myst-cli/myst-impl/target/myst-impl-RC.zip s3://rxr-myst/release/rc/myst-impl-RC-${env.DATE}-${env.SHORT_COMMIT_ID}.zip
+        """
+
+        if (env.BRANCH_NAME == "master") {
+            sh """
+            scp -i ~/MyST-CC.pem -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null myst-cli/myst-impl/target/rpm/myst/RPMS/x86_64/myst-RC-1.x86_64.rpm oracle@192.168.146.88:/u01/app/software/myst/installer/SNAPSHOT/LATEST/myst-LATEST.rpm
+            """
+        }
+    } else {
+        sh """
+        REPOSITORY="${env.ECR_REPOSITORY}/myst-branch:${BRANCH_TAG}"
+        cd fc-parent
+        docker build -t \${REPOSITORY} -f Dockerfile-myststudio-base .
+        \$(aws ecr get-login --no-include-email --region us-west-2)
+        docker push \${REPOSITORY}
+        docker rmi \${REPOSITORY}
+        aws s3 cp fc-sdk/fc-myst-studio-jenkins-plugin-light/target/fc-myst-studio-jenkins-plugin-light.hpi s3://rxr-private-myststudio-stackconfig/myststudio-jenkins-plugin/fc-myst-studio-jenkins-plugin-light-${BRANCH_TAG}.hpi
+        aws s3 cp fc-distribution/fc-installer/target/fc-installer-${BRANCH_TAG}.jar s3://rxr-myst/branch/${BRANCH_TAG}/fc-installer.jar
+        aws s3 cp fc-sdk/fc-studio-sdk-transport/target/fc-studio-sdk-transport-${BRANCH_TAG}-jar-with-dependencies.jar s3://rxr-myst/branch/${BRANCH_TAG}/fc-studio-sdk-transport-jar-with-dependencies.jar
+        aws s3 cp ../myst-cli/myst-impl/target/rpm/myst/RPMS/x86_64/myst-${BRANCH_TAG}_1.x86_64.rpm s3://rxr-myst/branch/${BRANCH_TAG}/myst-impl.rpm
+        aws s3 cp ../myst-cli/myst-impl/target/myst-impl-${BRANCH_TAG}.zip s3://rxr-myst/branch/${BRANCH_TAG}/myst-impl.zip
+        scp -i ~/MyST-CC.pem -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ../myst-cli/myst-impl/target/rpm/myst/RPMS/x86_64/myst-${BRANCH_TAG}_1.x86_64.rpm oracle@192.168.146.88:/u01/app/software/myst/installer/SNAPSHOT/myst-${BRANCH_TAG}.rpm
+        scp -i ~/MyST-CC.pem -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null ../myst-cli/myst-impl/target/myst-impl-${BRANCH_TAG}.zip oracle@192.168.146.88:/u01/app/software/myst/installer/SNAPSHOT/myst-impl-${BRANCH_TAG}.zip
+        """
+    }
+}
+
+def createRegressionStack() {
+    try {
+        sh """
+        MYST_VERSION="${env.MYST_VERSION}"
+        PROVISIONER_HOST="qd3suegcrg.execute-api.us-west-2.amazonaws.com"
+        PROVISIONER_API_KEY="mL4Qc6OVr749VGvNpkbFW1KVVTFDri9z6OliAS5w"
+        STACK_CONTENT=\$(cat <<ENDOFTEMPLATE
+{
+  "body": "{\\"stackName\\": \\"\${MYST_VERSION}\\",\\"versions\\": {\\"mystVersion\\": \\"\${MYST_VERSION}\\"},\\"customer\\": \\"RXR-RT\\"}"
+}
+ENDOFTEMPLATE
+)
+aws lambda invoke \
+--invocation-type RequestResponse \
+--function-name myst-test-dev-createRegressionStack \
+--payload "\$STACK_CONTENT" output
+        STACK_ID=\$(cat output | jq -r '.body | fromjson.id')
+        if [ "\$STACK_ID" = "null" ]; then
+          echo "Unexpected issue gettting stack id. Blame AWS!"
+          exit 1
+        fi
+        STATUS="STARTED"
+        MAX_ATTEMPTS=600
+        ATTEMPTS=0
+        while [ \$STATUS == "STARTED" ]; do
+          echo "Waiting for completion [\$STACK_ID]"
+          STATUS=\$(curl https://\${PROVISIONER_HOST}/dev/regression-stacks/\$STACK_ID | jq -r .status)
+          ATTEMPTS=\$((ATTEMPTS + 1))
+          if [ "\$ATTEMPTS" -ge "\$MAX_ATTEMPTS" ]; then
+            echo "Max retry attempts"
+            exit 1
+          fi
+          sleep 10
+        done
+        if [ \$STATUS == "FAILED" ]; then
+          exit 1
+        fi
+        """
+    } catch (err) {
+        destroyStack()
+        throw err
+    }
+
+}
+
+def createStack() {
+    try {
+        sh """
+        MYST_VERSION="${env.MYST_VERSION}"
+        PROVISIONER_HOST="qd3suegcrg.execute-api.us-west-2.amazonaws.com"
+        PROVISIONER_API_KEY="mL4Qc6OVr749VGvNpkbFW1KVVTFDri9z6OliAS5w"
+        STACK_CONTENT=\$(cat <<ENDOFTEMPLATE
+{
+  "body": "{\\"stackName\\": \\"\${MYST_VERSION}\\",\\"versions\\": {\\"mystVersion\\": \\"\${MYST_VERSION}\\"},\\"settings\\": {\\"mockMode\\": true},\\"customer\\": \\"RXR-RT\\"}"
+}
+ENDOFTEMPLATE
+)
+aws lambda invoke \
+--invocation-type RequestResponse \
+--function-name myst-test-dev-createStack \
+--payload "\$STACK_CONTENT" output
+        STACK_ID=\$(cat output | jq -r '.body | fromjson.id')
+        if [ "\$STACK_ID" = "null" ]; then
+          echo "Unexpected issue gettting stack id. Blame AWS!"
+          exit 1
+        fi
+        STATUS="STARTED"
+        MAX_ATTEMPTS=600
+        ATTEMPTS=0
+        while [ \$STATUS == "STARTED" ]; do
+          echo "Waiting for completion [\$STACK_ID]"
+          STATUS=\$(curl https://\${PROVISIONER_HOST}/dev/stacks/\$STACK_ID | jq -r .status)
+          ATTEMPTS=\$((ATTEMPTS + 1))
+          if [ "\$ATTEMPTS" -ge "\$MAX_ATTEMPTS" ]; then
+            echo "Max retry attempts"
+            exit 1
+          fi
+          sleep 10
+        done
+        if [ \$STATUS == "FAILED" ]; then
+          exit 1
+        fi
+        """
+    } catch (err) {
+        destroyStack()
+        throw err
+    }
+
+}
+
+def runUITests(){
+    try {
+        sh """
+        cd fc-protractor-tests/src
+        sed -i -r "s/(seleniumAddress: ).*/\\\\1'http:\\\\/\\\\/localhost:80\\\\/wd\\\\/hub',/" conf.js
+        sed -i -r "s/(baseUrl: ).*/\\\\1'http:\\\\/\\\\/${env.MYST_VERSION}.rubiconred.aws:8085\\\\/console\\\\/#\\\\/login',/" conf.js
+        npm install
+        export DISPLAY=:1
+        protractor conf.js --suite regressionTests
+        zip -r protractor-report.zip test_reports/html/
+        """
+    } catch (err) {
+        destroyStack()
+        throw err
+    } finally {
+        step([$class: 'JUnitResultArchiver', testResults: 'fc-protractor-tests/src/test_reports/junit/junitresults.xml'])
+        archiveArtifacts artifacts: 'fc-protractor-tests/src/protractor-report.zip', fingerprint: false
+    }
+}
+
+def runAcceptanceTests(){
+    try {
+        sh """
+        cd myst-acceptance
+        mvn -B clean install -Dapi.host=${env.MYST_VERSION}.rubiconred.aws -Dcucumber.options="--tags @api"
+        """
+    } catch (err) {
+        destroyStack()
+        throw err
+    } finally {
+        cucumber fileIncludePattern: 'myst-acceptance/target/*.json', sortingMethod: 'ALPHABETICAL'
+        step([$class: 'JUnitResultArchiver', testResults: '**/TEST-*.xml'])
+        //publishHTML([allowMissing: false, alwaysLinkToLastBuild: false, keepAll: false, reportDir: '', reportFiles: 'index.html', reportName: 'HTML Report', reportTitles: ''])
+    }
+}
+
+def runIntegrationTests() {
+  if (env.BRANCH_NAME == "master" || env.BRANCH_NAME.startsWith("hotfix")) {
+    createRegressionStack()
+    // DEPRECATED: runParallelProvisionTests()
+  }
+}
+
+def runParallelProvisionTests() {
+  sh """
+  cd myst-acceptance/src/test/resources
+  sudo pip install boto3
+  python provision.py ${env.MYST_VERSION}
+  """
+}
+
+def destroyStack(){
+    sh """
+    aws cloudformation delete-stack --stack-name ${env.MYST_VERSION}
+    aws cloudformation wait stack-delete-complete --stack-name ${env.MYST_VERSION}
+    """
+}
+
+def tagMyST(){
+    checkout scm
+    withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'rubiconred-ci-user', usernameVariable: 'GIT_USERNAME', passwordVariable: 'GIT_PASSWORD']]) {
+        sh("git config --global user.email \"soumyak.bhattacharyya@rubiconred.com\"");
+        sh("git config --global user.name \"soumyak_bhattacharyya\"");
+        env.GIT_REPOSITORY = sh (
+          script: "basename -s .git `git config --get remote.origin.url`",
+          returnStdout: true
+        ).trim()
+        sh("git tag -f -a 'myst-${env.RELEASE_VERSION}' -m '${env.RELEASE_VERSION}'")
+        sh("git push --force https://${env.GIT_USERNAME}:${env.GIT_PASSWORD}@bitbucket.org/rubiconred/${env.GIT_REPOSITORY}.git --tags")
+    }
+}
+
+def releaseMyST(latest) {
+    sh """
+    # To fail fast if jar cannot be accessed
+    \${AMI_JAVA_HOME_BIN}/jar || [[ \$? -eq 1 ]]
+    REPOSITORY="${env.ECR_REPOSITORY}/myst-studio:${env.RELEASE_VERSION}"
+    LATEST_REPOSITORY="${env.ECR_REPOSITORY}/myst-studio"
+    cd fc-parent
+    \$(aws ecr get-login --no-include-email --region us-west-2)
+    docker build --build-arg VERSION=${env.RELEASE_VERSION} --build-arg BUILD_ID=${env.DATE}-${env.SHORT_COMMIT_ID} -t \${REPOSITORY} -f Dockerfile-myststudio-release .
+    docker save \${REPOSITORY} > myst-studio-docker-image-${env.RELEASE_VERSION}.tar
+    docker run -i --name tomcat-myststudio-build \${REPOSITORY} bash -c "cd /usr/local && tar -zcvf tomcat-myststudio-bundle.tar.gz tomcat"
+    docker cp tomcat-myststudio-build:/usr/local/tomcat-myststudio-bundle.tar.gz tomcat-myststudio-bundle-${env.RELEASE_VERSION}.tar.gz
+    docker rm tomcat-myststudio-build
+    gzip myst-studio-docker-image-${env.RELEASE_VERSION}.tar
+    aws s3 cp myst-studio-docker-image-${env.RELEASE_VERSION}.tar.gz s3://rxr-myst/release/myst-studio-docker-image-${env.RELEASE_VERSION}.tar.gz
+    aws s3 cp tomcat-myststudio-bundle-${env.RELEASE_VERSION}.tar.gz s3://rxr-myst/release/tomcat-myststudio-bundle-${env.RELEASE_VERSION}.tar.gz
+
+    # Repackage plugin with the version
+    aws s3 cp s3://rxr-myst/release/rc/fc-myst-studio-jenkins-plugin-light-RC-${env.DATE}-${env.SHORT_COMMIT_ID}.hpi fc-myst-studio-jenkins-plugin-light-RC.hpi
+    rm -rf META-INF
+    mkdir -p META-INF
+    unzip -p fc-myst-studio-jenkins-plugin-light-RC.hpi META-INF/MANIFEST.MF > META-INF/MANIFEST.MF
+    sed -i.bak 's/RC/${env.RELEASE_VERSION}/' META-INF/MANIFEST.MF
+    \${AMI_JAVA_HOME_BIN}/jar umf META-INF/MANIFEST.MF fc-myst-studio-jenkins-plugin-light-RC.hpi
+    unzip -p fc-myst-studio-jenkins-plugin-light-RC.hpi META-INF/MANIFEST.MF
+    aws s3 cp fc-myst-studio-jenkins-plugin-light-RC.hpi s3://rxr-myst/release/fc-myst-studio-jenkins-plugin-light-${env.RELEASE_VERSION}.hpi
+    # Required for some downstream automation
+    aws s3 cp fc-myst-studio-jenkins-plugin-light-RC.hpi s3://rxr-private-myststudio-stackconfig/myststudio-jenkins-plugin/fc-myst-studio-jenkins-plugin-light-${env.RELEASE_VERSION}.hpi
+
+    aws s3 cp s3://rxr-myst/release/rc/fc-installer-RC-${env.DATE}-${env.SHORT_COMMIT_ID}.jar s3://rxr-myst/release/fc-installer-${env.RELEASE_VERSION}.jar
+    aws s3 cp s3://rxr-myst/release/rc/fc-studio-sdk-transport-RC-${env.DATE}-${env.SHORT_COMMIT_ID}-jar-with-dependencies.jar s3://rxr-myst/release/fc-studio-sdk-transport-${env.RELEASE_VERSION}-jar-with-dependencies.jar
+    aws s3 cp s3://rxr-myst/release/rc/myst-installer-RC-${env.DATE}-${env.SHORT_COMMIT_ID}.jar s3://rxr-myst/release/myst-installer-${env.RELEASE_VERSION}.jar
+    aws s3 cp s3://rxr-myst/release/rc/myst-impl-RC-${env.DATE}-${env.SHORT_COMMIT_ID}-rpm.rpm s3://rxr-myst/release/myst-impl-${env.RELEASE_VERSION}-rpm.rpm
+    aws s3 cp s3://rxr-myst/release/rc/myst-impl-RC-${env.DATE}-${env.SHORT_COMMIT_ID}.zip s3://rxr-myst/release/myst-impl-${env.RELEASE_VERSION}.zip
+    aws s3 cp s3://rxr-myst/release/rc/fc-user-guide-RC-${env.DATE}-${env.SHORT_COMMIT_ID}.war s3://rxr-myst/release/myst-studio-user-guide-${env.RELEASE_VERSION}.zip
+    \$(aws ecr get-login --no-include-email --region us-west-2)
+    docker tag \${REPOSITORY} rubiconxred/myst-studio:${env.RELEASE_VERSION}
+    docker push \${REPOSITORY}
+    if [ "${env.BRANCH_NAME}" = "master" ] && [ "${latest}" = "true" ]
+    then
+      docker tag \${REPOSITORY} \${LATEST_REPOSITORY}
+      docker tag \${REPOSITORY} rubiconxred/myst-studio
+      docker push \${LATEST_REPOSITORY}
+      docker rmi \${LATEST_REPOSITORY}
+    fi
+    docker rmi \${REPOSITORY}
+    """
+    withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'rubiconred-ci-user', usernameVariable: 'DOCKER_HUB_USERNAME', passwordVariable: 'DOCKER_HUB_PASSWORD']]) {
+        sh("docker login -u rubiconredciuser -p ${env.DOCKER_HUB_PASSWORD}");
+        sh("docker push rubiconxred/myst-studio:${env.RELEASE_VERSION}")
+        if (env.BRANCH_NAME == "master" && latest){
+            sh("docker push rubiconxred/myst-studio")
+        }
+    }
+    sh """
+    docker rmi rubiconxred/myst-studio:${env.RELEASE_VERSION}
+    """
+    if ("${env.BRANCH_NAME}" == "master" && latest){
+      sh """
+      docker rmi rubiconxred/myst-studio
+      """
+    }
+    updateWebsite()
+}
+
+def updateWebsite(){
+    sh """
+    aws s3 cp s3://rxr-myst/release/myst-studio-user-guide-${env.RELEASE_VERSION}.zip .
+    sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -b /dev/stdin -oPort=18765 -o "IdentityFile=~/siteground-np.pem" rubiconr@www.rubiconred.com <<EOF
+    cd /home/rubiconr/cloud-engineering/myst-doc-zip
+    put myst-studio-user-guide-${env.RELEASE_VERSION}.zip
+
+    bye
+EOF
+    """
+    sh "ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -i ~/siteground-np.pem rubiconr@www.rubiconred.com -p 18765 '/home/rubiconr/cloud-engineering/scripts/mystdoc.sh'"
+    build job: 'MyST-Website-Production'
+}

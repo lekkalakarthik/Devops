@@ -1,0 +1,27 @@
+wget -O /etc/yum.repos.d/jenkins.repo http://pkg.jenkins-ci.org/redhat-stable/jenkins.repo
+firewall-cmd --add-port=8080/tcp --permanent
+firewall-cmd --reload
+
+firewall-cmd --list-all
+
+78dd5a8be41d457d8809a18de8819aab
+
+################YOUTUBE###############
+https://www.youtube.com/watch?v=5BAQsU_jgp4&list=PLTCuRW0ikUdPL7ljUHbbhXGB5us5wj639
+https://www.devopsschool.com/path
+https://www.devopsschool.com/blog
+https://www.youtube.com/watch?v=o8FU7Ez2B7I
+
+echo -n 'redhat123{admin}' | sha256sum
+
+
+/var/jenkins_home/users
+
+sed 's/#jbcrypt:$2a$10$T4MvU23ra92MLyOud0DLv.DhBFz3G233fhib0bBFow1W//B4jLmCe/<passwordHash>admin:fa07d3c817ef87304397161ed03c49b9d6d2700647556d09bd2ab8b36829d9c1</passwordHash>/' geekfile.txt
+
+bcrypt.hashpw("$2a$10$T4MvU23ra92MLyOud0DLv.DhBFz3G233fhib0bBFow1W//B4jLmCe", bcrypt.gensalt(rounds=10, prefix=b"2a"))
+
+##########################
+https://www.youtube.com/watch?v=Ri-URt8gPCk
+https://www.youtube.com/watch?v=6YZvp2GwT0A
+

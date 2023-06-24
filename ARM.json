@@ -1,0 +1,71 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "virtualMachines_linux1withdisk_name": {
+            "defaultValue": "linux1withdisk",
+            "type": "String"
+        },
+        "disks_Linux1Disk_externalid": {
+            "defaultValue": "/subscriptions/445a746d-f233-4ce5-8e4a-a10879f0bfe8/resourceGroups/AZ104/providers/Microsoft.Compute/disks/Linux1Disk",
+            "type": "String"
+        },
+        "networkInterfaces_linux1withdisk155_externalid": {
+            "defaultValue": "/subscriptions/445a746d-f233-4ce5-8e4a-a10879f0bfe8/resourceGroups/AZ104/providers/Microsoft.Network/networkInterfaces/linux1withdisk155",
+            "type": "String"
+        }
+    },
+    "variables": {},
+    "resources": [
+        {
+            "type": "Microsoft.Compute/virtualMachines",
+            "apiVersion": "2022-08-01",
+            "name": {
+            "defaultValue": "linux1withdisk",
+            "type": "String"
+        },
+            "location": "eastus",
+            "properties": {
+                "hardwareProfile": {
+                    "vmSize": "Standard_B1s"
+                },
+                "storageProfile": {
+                    "osDisk": {
+                        "osType": "Linux",
+                        "name": "Linux1Disk",
+                        "createOption": "Attach",
+                        "caching": "ReadWrite",
+                        "managedDisk": {
+                            "storageAccountType": "Premium_LRS",
+                            "id": {
+            "defaultValue": "/subscriptions/445a746d-f233-4ce5-8e4a-a10879f0bfe8/resourceGroups/AZ104/providers/Microsoft.Compute/disks/Linux1Disk",
+            "type": "String"
+        }
+                        },
+                        "deleteOption": "Detach",
+                        "diskSizeGB": 64
+                    },
+                    "dataDisks": []
+                },
+                "networkProfile": {
+                    "networkInterfaces": [
+                        {
+                            "id": {
+            "defaultValue": "/subscriptions/445a746d-f233-4ce5-8e4a-a10879f0bfe8/resourceGroups/AZ104/providers/Microsoft.Network/networkInterfaces/linux1withdisk155",
+            "type": "String"
+        },
+                            "properties": {
+                                "deleteOption": "Delete"
+                            }
+                        }
+                    ]
+                },
+                "diagnosticsProfile": {
+                    "bootDiagnostics": {
+                        "enabled": true
+                    }
+                }
+            }
+        }
+    ]
+}

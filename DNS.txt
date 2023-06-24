@@ -1,0 +1,7 @@
+hostnamectl set-hostname myserver.com
+yum install -y bind*
+vi /etc/named.conf
+192.168.0.112
+Ansible.Master
+cd /var/named
+

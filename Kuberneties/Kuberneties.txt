@@ -1,0 +1,955 @@
+kuberneties
+
+#################################################
+https://www.youtube.com/watch?v=ZvR6EsYzOyc events/logs
+https://www.youtube.com/watch?v=q7Gb2DCKofk  interview questions
+https://www.youtube.com/watch?v=FQT6xTpH06c kuberneties engilsh all tritree
+https://www.youtube.com/watch?v=oxw9_q5TwNo  Devops interview
+https://www.youtube.com/watch?v=ZW9I8vAPEFI interview jobs
+https://kubernetes.io/docs/setup/independent/install-kubeadm
+https://www.youtube.com/watch?v=xZ2QVAKgDaI&list=PLd8alL65M1GZ2jyltUiH5rYFZ-Wx3vGrp&index=14
+https://www.youtube.com/watch?v=YkkL46rqxSU&list=PLd8alL65M1GYYIPtoQRLJJsk_niit1dU_     project
+https://www.youtube.com/watch?v=NsDhBEsTTHs&list=PLVHgQku8Z934suC9LSE6vaAKjOH_MfRbE&index=10
+https://www.youtube.com/watch?v=4flpat5zYSw
+
+
+There are four importent resources in kuber neties master node.
+1) API server - kubectl command will interact with this server first
+2)etcd - it is like backend database
+3)scheduler - it schedules
+4)controller manager
+
+There are three resources in Kuberneties worker node.
+1)Kubelet
+2)proxy
+3)Container engine 
+
+Alternatives for Kuberneties
+1) Docker swarm
+2)Azure containerized server
+3) Amzon EKS
+4) Google GKE
+5)Redhat Openshift
+
+######################Kuberneties install ###########################
+We have two types of installations in kuberneties
+Kuberneties.io/docs/tasks/tools/install-minicube
+
+https://kubernetes.io/docs/tasks/tools/install-minicube
+
+1)mini Kubelet it is all in one instalation kuberneties master and nodes will install in same box
+2)Kubeadm
+
+kubectl get pods \\ it will show all pods from master
+
+All Kuberneties resources like pods and volumes will store in etc.DB as json format
+
+Kuberneties explain <RESOURCENAME>
+
+Kuberneties.io/docs will have more info
+
+****kuberneties dashboard will not deploy by default we need to do manually
+
+kubectl apply -f https://raw.githubusercontent.com/kubernetes/dashboard/v2.7.0/aio/deploy/recommended.yaml
+
+http://192.168.0.110:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/
+
+https://github.com/kubernetes/dashboard/blob/master/docs/user/access-control/creating-sample-user.md  //create sample user for dashboard
+
+kubectl cteate -f yamlfile //it will create resources
+kubectl delete -f yamlfile //it will delete resources
+kubectl get <RESOURCENAME> -o yaml  > MyYAMLFILE
+kubectl get all
+kubectl get pods --all-namespaces -o wide
+kubectl get pods -A
+kubectl get deployments,pods -A
+kubectl describe pods
+Refer screenshot
+kubectl api-resources
+kubectl api-versions  // but beter to check kuberneties official docs
+kubectl explain pod
+kubectl explain pod.spec // it will give all info about pod resource arguent spec
+kubectl explain pod.spec.containers
+minicube dashboard
+kubectl get deployment
+kubectl get deployment/nginix-lab -o yaml > myresource.yml
+kubectl run nginx --image=nginx
+kubectl create -f busybox.yml
+kubectl delete pod busybox // As we created this pod as it is not created as deploymnet.this is naked pod
+kubectl delete nginx  //Kuberneties will create one more pod as we created as deployment
+kubectl get deployment
+kubectl delete deployment/nginx
+
+rolling update means if we have three pods we can update pod one by one like nginix version update.
+Recreation update means it wil recreate the new version 
+
+rollout undo
+
+kubectl create -f nginix.yml  //replication sets is 3
+
+kubectl create deployment nginx1 --image=nginx:latest
+
+
+// changing replication sets to 4 change in nginix.yml file then
+
+Kubectl apply -f nginix.yml // here version is 1.1
+
+//Need to change nginix version to 1.2 change in nginix.yml file then
+
+Kubectl apply -f nginix.yml // version 1.1 pods will shutdown one by one and create new pod with version 1.2
+
+kubectl rollout status deployment/nginix
+kubectl rollout history  //kubectl rollout history deployment/nginix
+kubectl rollout undo //it will revart back to v 1.1
+kubectl set image deployment/nginix nginix:latest
+
+kubectl set image deployment/redis redis=redis:latest
+
+kubectl rollout undo deployment/redis
+
+//if we give unknown image and deployed yml then it will get error to check that
+
+kubectl describe pod/redis-6dc855767d-9dwvs
+
+kubectl rollout status deployment/redis
+kubectl rollout history deployment/redis
+//https://www.youtube.com/watch?v=Fg9J8qp36V0&list=PLd8alL65M1GZ2jyltUiH5rYFZ-Wx3vGrp&index=9
+#######################redis.yaml#################
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  labels:
+    app: redis
+spec:
+  selector:
+    matchLabels:
+      app: redis
+  replicas: null
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+        - name: redis
+          image: redis:alpine
+          ports:
+            - containerPort: 6379
+              name: redis
+
+############################################
+
+#######Namespaces########
+
+kubectl create namespace dev
+kubectl get pods -n dev
+kubectl get all --all-namespaces  
+kubectl get all -a 
+kubectx  context >> .kube/config/  contect value is default kubectx and kubens are external packages
+kubens // to change name stace
+
+kubectx will used to swith the context if we have multiple clusters in the host
+
+These two are external pakages we need to clone from github
+git clone https://github.com/ahmetb/kubectx
+by default we will be in default name space if we want to change
+kubens dev // it will change namesace from default to dev
+
+kubectl get namespaces
+
+kubectl config set-context --current --namespace=dev
+
+#########################busybox.yaml######
+     
+apiVersion: v1
+kind: Pod
+metadata:
+  name: busybox
+  namespace: dev
+  labels:
+    app: redis
+spec:
+  containers:
+    - name: busybox
+      image: busybox
+      command:
+        - sleep
+        - "3600"
+
+#######################NETWORKING########
+
+If we have two containers in POD those two containers will get same IP. Not like docker both get different adresses refere two_containers_pod.yml screen shot
+
+kubectl get pdos -o wide //it will give all pods IP adresses
+
+kubectl describe pod two_containers_pod
+kubectl exec -ti two -c busybox1 /bin/sh
+
+kubectl exec -ti two_containers_pod -c nginix1 /bin/bash >> ip a
+kubectl exec -ti two_containers_pod -c nginix2 /bin/bash >> ip a
+
+kubectl logs two -c busybox1  //two is pod name and -c we can see perticular container logs
+
+Kuberneties service typs
+
+We have 3 types of service types 
+
+1)NODEPORT
+2)cluster IP  //default service types
+3)loadbalencer
+4)ingress
+kubectl get nodes
+kubectl get nodes -o wide
+
+in kuberneties node prots are in beet ween 30,0000 to 32,767 
+
+Kubectl create -f nginix.yml // creating a webserver container
+
+kubectl create -f service.yml // creating service for above pod
+
+#############TWO_Containers.yaml##############
+apiVersion: v1
+kind: Pod
+metadata:
+  name: two
+  namespace: dev
+  
+spec:
+  containers:
+    - name: busybox1
+      image: busybox
+      command:
+        - sleep
+        - "3600"
+		
+    - name: busybox2
+      image: busybox
+      command:
+        - sleep
+        - "3600"
+
+kubectl get services or kubectl get svc
+#################NGINIX#######################
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx
+  labels:
+    app: nginx
+spec:
+  selector:
+    matchLabels:
+      app: nginx
+  replicas: 4
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+        - name: nginx
+          image: nginx
+
+########################Service.yml#########
+apiVersion: v1
+kind: Service
+metadata:
+  name: myservice
+spec:
+  selector:
+    app: nginx
+  ports:
+    - targetPort: 80
+      port: 80
+      nodePort: 30020
+  type: NodePort
+
+
+#################################
+
+change content in each node /usr/share/nginx/html
+
+kubectl expose deployment nginx --type=NodePort --port=8080
+
+kubectl create service nodeport  nginx --tcp=80:80 //service name must be deployment name and 80 is service port name and other 80 is nginx expose port number you will get atomated port for node that is in 30 k range
+
+Second type of service is clusterip this is default service type in kuberneties. this will create a cluster IP for the service we can access trough this IP
+third type is load balencer this is like we can assign public IP to service so external clints can access our application
+
+if we want ti use the ingress this services must be nodeport only and it will route request to service and it shoude be type culsterIP
+
+kubectl get ing
+
+https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/mandatory.yaml
+https://www.youtube.com/watch?v=4flpat5zYSw
+
+#####################kuberneties volume #################
+
+###################sample volume.yml#######################
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: myvol
+spec:
+  containers:
+    - name: centos
+      image: centos:7
+      command:
+        - sleep
+        - "3600"
+      volumeMounts:
+        - mountPath: /test
+          name: test
+  restartPolicy: Always
+  volumes:
+    - name: test
+      emptyDir: {}
+
+
+###########################
+
+kubectl create -f volume.yml
+kubectl describe pod myvol
+kubectl explain pod.spec.volumes
+kubectl exec -ti myvol touch /test/file1
+kubectl exec -ti myvol -- ls -l /test/file1
+###########################more volumes.yml#######################
+apiVersion: v1
+kind: Pod
+metadata:
+  name: morevolumes
+spec:
+  containers:
+    - name: centos1
+      image: centos:7
+      command:
+        - sleep
+        - "3600"
+      volumeMounts:
+        - mountPath: /centos1
+          name: test
+    - name: centos2
+      image: centos:7
+      command:
+        - sleep
+        - "3600"
+      volumeMounts:
+        - mountPath: /centos2
+          name: test
+  volumes:
+    - name: test
+      emptyDir: {}
+   
+   ###################We are mounting same directory to two different containers###############
+   
+   kubectl exec -ti morevolumes -c centos1 -- touch /centos1/file1
+   kubectl exec -ti morevolumes -c centos2 -- ls -l /centos2/
+   
+####PERSISTEN volume##
+PCV - persistent volume clave
+###############persistenVolume.yml#######################
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pvvolume
+  labels:
+    type: local
+spec:
+  capacity:
+    storage: 2Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "/mydata"
+
+	
+##################
+kubectl create -f persistenVolume.yml
+kubectl get pv(pv is one of resource like pod complete observation is persistant volume) //it will give PVC information also
+
+Relaim policyes for persistant volume are three
+1)Retain >> if pod deleteted PV will remain
+2)delete >> it will delete if we delete pod
+3)recycle >> search
+
+############################persistenVolumeClaim.yml#######################
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata: 
+  name: pvclaim
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+	  storage:1Gi
+###############################################
+kubectl create -f persistenVolumeClaim.yml
+kubectl get pvc
+
+###Storage class###########
+we need to have external storage for this if we have external storage with yaml file we cal create SVC and attach to SV and deploy application dynamically
+
+Ream more in web
+https://kubernetes.io/docs/tasks/configure-pod-container/configure-persistent-volume-storage/
+
+############Kuberneties statefull sets ####
+
+kuberneties stateful sets similar to zookeper (for managment perpose) this method will have master and follwers  episodes 13
+
+###################kuberneties headless service###
+
+When erver we create a serice and give clusteradress is none that will become headless service
+
+learn more in other channels stefullsets and headless service
+
+https://kubernetes.io/docs/tutorials/stateful-application/zookeeper/
+#############kuberneties Trouble shooting#################
+
+kubectl logs <PODNAME>
+kubectl describe <PODNAME>
+kubectl cordon -h
+kubectl drain -h
+kubectl uncordon -h
+
+##############kuberneties API managment #############
+curl -- cert certpath --key keypath --cacert cacertpath https://controlernode:6443/api/v1
+kubectl proxy --port=8001 &
+curl http://localhost:8001/version
+curl http://localhost:8001/api/v1/namespaces/default 
+curl http://localhost:8001/api/v1/namespaces/default/pods
+curl http://localhost:8001/api/v1/namespaces/default/pods/nginx-748c667d99-27x7q(perticular pod)
+curl -XDELETE http://localhost:8001/api/v1/namespaces/default/pods/nginx-748c667d99-27x7q(perticular pod)
+kubectl api-versions
+kubectl api-resources
+kubectl explain pod
+
+
+###############Kuberneties ingress#######################
+https://kubernetes.io/docs/contribute/style/content-guide/#third-party-content
+
+https://www.youtube.com/watch?v=NsDhBEsTTHs&list=PLVHgQku8Z934suC9LSE6vaAKjOH_MfRbE&index=11
+
+https://www.youtube.com/watch?v=4flpat5zYSw&list=PLVHgQku8Z934suC9LSE6vaAKjOH_MfRbE&index=32
+
+https://github.com/mohanpedala/k8s-ingress/blob/master/mandatory.yaml
+
+https://github.com/kubernetes/ingress-nginx/blob/main/docs/deploy/index.md#bare-metal-clusters
+
+
+raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/mandatory.yaml
+https://raw.githubusercontent.com/kubernetes/ingress-nginx/130af33510882ae62c89277f2ad0baca50e0fafe/deploy/static/mandatory.yaml
+https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/provider/baremetal/service-nodeport.yaml
+https://raw.githubusercontent.com/kubernetes/ingress-nginx/nginx-0.30.0/deploy/static/provider/baremetal/service-nodeport.yaml
+
+##############CORRECT process##############
+
+https://github.com/kubernetes/ingress-nginx/blob/main/docs/deploy/index.md#bare-metal-clusters
+kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.7.0/deploy/static/provider/cloud/deploy.yaml
+
+
+We have two types of ingress projects in market  we can do this with HA PROXY also
+1)ingress-nginix
+2)kuberneties-ingress
+
+ingress  will deffer from cloud provider like AWS , Azure loca, Ibm all will have different approch
+
+All cloud providers will have ingress controller by defalut we need to have ingress config 
+
+install nginx ingress controller
+
+//#kubectl create -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/130af33510882ae62c89277f2ad0baca50e0fafe/deploy/static/mandatory.yaml //creating ingress controller
+//#kubectl create-f https://raw.githubusercontent.com/kubernetes/ingress-nginx/nginx-0.30.0/deploy/static/provider/baremetal/service-nodeport.yaml creating ingress service with nodeport
+
+crete two deployments
+
+kubectl create -f nginx.yaml
+kubectl create -f httpd.yaml
+
+create two services for nginx and httpd and the service must be custer ip
+
+kubectl create service clusterip nginx --tcp=80:80
+kubectl create service clusterip httpd --tcp=80:80
+
+
+%%%%%%%%%%%%%%ingresrules.yaml%%%%%%%%%%%%%%
+apiVersion: networking.k8s.io/v1
+kind: Ingress Ingress
+metadata:
+  name: myingress
+  annotations:
+    nginix.ingress.kubernetes.io/rewrite-target: /
+spec:
+  rules:
+    - http:
+        paths:
+          - path: /nginx
+            backend:
+              serviceName: nginx
+              servicePort: 80
+          - path: /httpd
+            backend:
+              serviceName: httpd
+              servicePort: 80
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+kubectl create deployment web --image=gcr.io/google-samples/hello-app:1.0
+
+kubectl expose deployment web --type=NodePort --port=8080
+https://kubernetes.io/docs/tasks/access-application-cluster/ingress-minikube/
+
+#####ingress.yml######  // Note we need to add host hello-world.info DNS name to minicube ip in etc/hosts file in laptop in real time we will have DNS server 
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: example-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /%1
+spec:
+  rules:
+   - host: hello-world.info
+     http:
+       paths:
+        - path: /
+          pathType: Prefix
+          backend:
+            service:
+              name: web
+              port:
+                number: 8080
+		- path: /v2                     //Added later
+          pathType: Prefix
+          backend:
+            service:
+              name: web2
+              port:
+                number: 8080
+########################################################
+kubectl describe ing exaple-ingress
+
+##############Readiness and liveness probs ###############
+
+readiness prob it will check id any service is redy or not if the service is not ready it will not create a resource
+liveness prob it will continueslly check id of any resource is avialable or not
+probs are 3 types
+1)exec  --shoud return zero
+2)httpget -- shoud return 200-399 http code
+3)tcpsocket -- check port connectivity
+
+#############SAMPLE readiness.yml#######################
+apiVersion: v1
+kind: Pod
+metadata:
+  name: busyboxredyness
+  namespace: default
+spec:
+  containers:
+  - name: busybox
+    image: busybox
+    command:
+    - sleep
+    - "3600"
+    readinessProbe:
+      periodSeconds: 10
+      exec:
+        command:
+        - cat
+        - /tmp/nothing
+    resources: {}
+	
+kubectl describe po busyboxredyness
+kubectl exec -it busyboxredyness /bin/sh
+################## livenessprobs############## //session17
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginxprobes
+  labels:
+    role:web
+spec:
+  containers:
+  - name: nginxprobs
+    image: nginx
+    readinessProbe:
+      tcpSocket:
+        port: 80
+      initialDelaySeconds: 5
+      periodSeconds: 10
+    livenessProbe:
+      tcpSocket:
+        port: 80
+      initialDelaySeconds: 5
+      periodSeconds: 10
+
+###############
+
+kubectl describe po busyboxredyness
+###############COnfigMaps and secrets################
+
+These are special type of volumes 
+kubectl create ConfigMaps or cm 
+kubectl create cm variables --from-file=<file path>
+
+kubectl create cm special --from literal=Var1= HYD --from -literal = var2 = Vizag
+
+crete a variable file with below content
+var1=hyd
+var2=viz
+
+kubectl create cm variables --from-file=variable
+
+kubectl describe cm variables
+
+kubectl create cm variables --from-file=variable -o yaml --dry-run //it is a dry run it will not create any resource. But- gives you yml file to create resource
+
+kubectl create cm myvars --from-literal=Var6=PAR --from-literal=var44=Pir
+#################Create one yml file configmap.yml ################
+appVersion: v1
+kind: pod
+metadata:
+  name: configmap
+spec:
+  containers:
+  - name: configmap
+    image: cirros
+    command: ["/bin/sh" , "-c", "env"]
+    envFrom:
+    - configMapRef:
+        name: variables	
+		
+##########################
+##################nginx_config.conf###################
+server{
+listen 8888;
+server_name localhost;
+location / {
+ root /usr/share/nginx/html;
+ index index.html index.hml
+ }
+ }
+#########################################
+
+kubectl create cm nginx-cm --from-file=nginx_config.conf 
+Now create a pod with nginx image
+############nginix-cm.yaml############
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx-cm
+  labels:
+  app: nginx-cm
+spec:
+  containers:
+    - name: nginx-cm
+      image: nginx
+      volumeMounts:
+        - mountPath: /etc/nginx/config.d
+          name: configmap
+  volumes:
+    - name: configmap
+      configMap:
+        name: nginx-cm
+        items:
+          - key: nginx_config.conf
+            path: default.conf
+
+#####################
+
+
+kubectl create -f configmap.yml
+kubectl logs configmap // it will show all variables assigned to container (env values) so we can see our viables hyd and viz here
+
+kubectl expose pod nginx-cm --type=NodePort --port=80
+
+######################################Secrets######################
+by default system will create some cecrets.
+cecrets are not encripted they are encoded
+there are 3 types of cecrets 
+1) docker-regestery // to connect any docker registory
+2) TLS    //when ever we connect from application to application we use TLS secrets
+3) generic // it might be literal aor from a file
+
+kubectl get secrets -A
+kubectl get serviceaccounts -A
+
+we can create secrets same as confing maps like from  file or literal
+
+kubectl create secret generic my-secret --from-file=private_key=/home/karthik/kuberneties/Linux_Key_Azure.ppk --from-literal=passprase=password
+
+kubectl describe secret/my-secret
+kubectl get secret/my-secret -o yaml
+echo -n "karthik"|base64
+echo "a2FydGhpaw=="| base64 -d
+
+kubectl create secret generic secretdata --from-literal=password=password --from-literal=username=karthik
+################secrets.yaml################
+apiVersion: v1
+kind: Pod
+metadata:
+  name: secretpod
+spec:
+  containers:
+    - name: secretpod
+      image: busybox
+      command:
+      - sleep
+      - "3600"
+      volumeMounts:
+        - mountPath: /secretstuff
+          name: secretmount
+  volumes:
+    - name: secretmount
+      secret:
+        secretName: secretdata
+##############################################
+kubectl create secret generic mysqlsecret --from-literal=password=Amdocs%123a
+############################mysql.yaml####################
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: mysql
+spec:
+  containers:
+    - name: mysql
+      image: mysql
+      env:
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom: configmap
+		    secretKeyRef:
+			  name: mysqlsecret
+			  key: password
+  #############################
+  ############RUNSHEEt commands%###############
+  kubectl set //check more
+  kubectl edit // we can edit pod or deployment to increase the scalesets
+  kubectl scale 
+  kubect autoscale // we can autosclae replicateion sets check more
+  kubectl portforward  // we can forward port check more
+  kubectl apply
+  kubectl replace
+  kubectl wait
+  kubectl annotate // if we miss to give annatation we can give with kubectl command
+  kubectl top
+  kubectl cluster-info
+  kubectl debug
+  ###################
+  #######################Rollout#######################
+  
+  https://www.youtube.com/watch?v=kFv6c00iEjY&list=PLd8alL65M1GZ2jyltUiH5rYFZ-Wx3vGrp&index=22
+  kubectl create deployment my-app --image nginx --dry-run -o yaml > created.yaml
+  kubectl create -f created.yaml
+  kubectl scale deployment my-app --replicas=5
+  kubectl set image deployment my-app nginx=nginx:7.5
+  kubectl rollout history deployment
+  kubectl rollout history deployments my-app --revision=2
+  kubectl rollout undo deployments my-app --to-revision=1 
+  
+########################LABLES AND SELECTORS####################################
+
+https://www.youtube.com/watch?v=xShFdJEDXWw&list=PLd8alL65M1GZ2jyltUiH5rYFZ-Wx3vGrp&index=23
+
+ kubectl run appserver --image=tomcat --restart=Never --labels=env=prod,team=admin --dry-run -o yaml >tomcat.yaml
+ kubectl run appserver --image=tomcat --restart=Never --labels=env=prod,team=admin
+ kubectl run devserver --image=tomcat --restart=Never --labels=env=dev,team=dev
+kubectl run dbserver --image=tomcat --restart=Never --labels=env=prod,team=dba
+kubectl run stageserver --image=tomcat --restart=Never --labels=env=dev,team=admin
+
+ kubectl get pods --show-labels
+ kubectl get pods -l 'team in (dev, admin)' --show-labels
+ kubectl get pods -l 'team in (dev, admin)','env in (prod)' --show-labels
+ kubectl get pods -l 'team in (dev, admin)',env=prod --show-labels
+ kubectl get pods --show-labels
+ kubectl label pods appserver env-
+ kubectl get pods --show-labels
+ kubectl annotate po appserver contact=Karthik_Lekkala
+kubectl annotate po dbserver contact=Shiva_Sunder  
+kubectl get po dbserver -o yaml | grep -C 3 annotations
+
+##################################EVENTS and LOGS ################################
+https://www.youtube.com/watch?v=ZvR6EsYzOyc&list=PLd8alL65M1GZ2jyltUiH5rYFZ-Wx3vGrp&index=24
+
+kubectl version --short
+helm version --short
+kubectl create deployment logger --image=chentex/random-logger --dry-run -o yaml > logger.yaml
+
+kubectl scale deployment logger --replicas=2
+kubectl get events
+kubectl get events -n kube-system
+kubectl get events --field-selector=involvedObject.name=logger
+kubectl logs -f  logger-7966d75df-p7s9t
+kubectl logs --selector app=logger
+kubectl edit deployment logger //we can edit everything but it will create new pod once thet is success it will create old one
+########################################################
+
+##############################CHAOSkube for testing###############################################################
+https://www.youtube.com/watch?v=_JnTHj2EFbI&list=PLd8alL65M1GZ2jyltUiH5rYFZ-Wx3vGrp&index=25
+
+https://github.com/linki/chaoskube 
+
+kubectl create namespace chaoskube
+helm repo add stable https://kuberneties-charts.storage.googleapis.com
+
+Name : stable Old Location:https://kubernetes-charts.storage.googleapis.com
+New Location:https://charts.helm.sh/stable
+
+Name : incubator Old Location:https://kubernetes-charts-incubator.storage.googleapis.com New Location:https://charts.helm.sh/incubator
+
+Reference:https://helm.sh/blog/new-location-stable-incubator-charts/
+
+helm instamm --name chaoskube stable/chaoskube --namespace chaoskube --set 'namespace=!kube-system' --set labels=app-purpose=chaos --set interval=20s 
+
+##################################persistent volume claime data################ NEED to practice #########
+
+https://www.youtube.com/watch?v=DdUsgSzQ2Ls&list=PLd8alL65M1GZ2jyltUiH5rYFZ-Wx3vGrp&index=26
+
+Try this for error https://stackoverflow.com/questions/59484509/node-had-taints-that-the-pod-didnt-tolerate-error-when-deploying-to-kubernetes
+
+By default, your cluster will not schedule Pods on the control plane nodes for security reasons. If you want to be able to schedule Pods on the control plane nodes, for example for a single machine Kubernetes cluster, run:
+
+kubectl taint nodes --all node-role.kubernetes.io/control-plane-
+
+%%%%%%%%%%%%%%%nopersistent.yaml%%%%%%%%%%%%%%%
+apiVersion: apps/v1
+kind: Pod
+metadata:
+  name: nopersistent
+  labels:
+    app: nopersistent
+spec:
+  containers:
+  - name: nopersistent
+    image: nginx
+	imagePullPolicy: IfNotPresent
+	ports:
+	- containerPort: 80
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+kubectl create -f nopersistent.yaml
+kubectl exec -ti nopersistent /bin/bash
+echo "hellow world" >> /tmp/persist.txt
+
+kubectl exec -ti nopersistent -- /bin/bash -c "kill 1"
+%%%%%%%%%%%%%%%%Persistenvolumeclaim.yaml%%%%%%%%%%%%%%%%%
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata: 
+  name: localpvc
+  namespace: default
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local-path
+  resources:
+    requests:
+	  storage: 1Gi
+%%%%%%%%%%%%%%%%%%%%%%%%%%persistent.yaml%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+apiVersion: apps/v1
+kind: Pod
+metadata:
+  name: persistent
+  namespace: default
+spec:
+  containers:
+  - name: persistent
+    image: nginx
+	imagePullPolicy: IfNotPresent
+	volumeMounts:
+	- name: vol
+	  mountPath: /data
+	ports:
+	- containerPort: 80
+  volumes:
+  - name: vol
+    persistentVolumeClaim:
+	  claimName: localpvc
+	  
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+###################################KUBE APIS#############
+
+kubectl get componentstatus
+kubectl get --raw /
+
+kubectl get --raw /api/v1/namespace/default/pods/
+kubectl proxy 8001 > /dev/null &
+ curl localhost:8001
+ kubectl api-resources --api-group=batch
+ kubectl explain ns --recursive  ***********
+ kubectl describe ns kube-system
+######################Ammazon EKS #####is also bommin but check Azure one##############
+#####KNATive need to lern from youtube  ###
+Acyual flow is 
+Git (Docker file)>>
+  Docker image>>
+     Docker Hub >>
+       >> yaml file >> deploy to k8
+Now kanative is Build   server Events with is we can develop and deploy application learn more
+############ 37 CKAD CKA CKS ######	  
+https://www.cncf.io/certification/cks/ 
+https://github.com/cncf/k8s-conformance/blob/master/terms-conditions/Certified_Kubernetes_Terms.md
+   multi trasport layer securoty we need to know
+##########WSO2 it is like API gateway episode  #####
+
+############Lern about LimitRange resource in kuberneties##############
+
+###############dockershim  is Kubernetes Deprecated Docker############
+
+containerd and  CRI-O
+
+all container runtimes follows OCI standers (Open container initiative standerds )
+#####EPISODE 49 ISTIO#######
+Search in OpenAI
+
+With IStio we can contorll(traffic management) trfic 10% can give to one service and 90% can give to exsiting service once all testing is completed we can move all trafic to new service. ISTIO will connect microservices with MTLS(Mutual TLS). We can do rety logic also with ISTIO if one call fails at perticular time it should retry. With service mesh concept developer no need to think about below points he can consantrate on code. How to connect how to secure and monitor ISTIO will take care
+
+Secure
+connection
+Observe  >> monitoring
+control
+
+CRD >> Custom resource defination: we can deploy our own resource with exsiting kuberneties API. we are extending that api.
+
+ CRDs provide a flexible and extensible way to manage custom resources in Kubernetes, and are a powerful tool for managing complex application workloads in a Kubernetes environment
+ 
+ clint will first istio gateway(ingress gateway) then it will connect to vertusal service after that it will go to Envoy proxy container once we install istio Envoy proxy will deploy in all POD with acual microservice act se proxy. once it reach microservices it will agin come to proxy here it will go to clint or will make external call if it make other external call(We need to writ edestination rules) it will agin go Envoy proxy in theat container.
+
+
+###############CKAD https://github.com/TrieTreeTechnologies/ckad-questions/blob/main/Questions 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+####################HELM PACKAGE MANAGER##############
+helm is a pakage manager just like apt-get or yum
+it will deploy amm deplendent yaml files as chart. chart is a colletion of depencent yaml files
+we have helm hub also. it is just same as docker hub and git hub repository
+
+helm search centos
+in helm we have 3 main file 
+chart.yaml, values.yaml amd templete
+
+helm install --values=newvalues.yaml <chart Name>
+helm install --set image=jenkins:370 //we can change image also after installation
+helm upgrade <Chartname>
+helm rollback <ChartName>
+helm has two versions 2.0 and 3.0 in 2.0 we have tiller concept but for security reasons kuberneties removed tiller concept in 3.0 version of helm

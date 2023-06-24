@@ -1,0 +1,3 @@
+https://www.youtube.com/watch?v=QXeEoD0pB3E&list=PLsyeobzWxl7poL9JTVyndKe62ieoN-MZ3
+print (r'c:\navin')   // r will print raw 
+5 contibue

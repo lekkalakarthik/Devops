@@ -1,0 +1,3 @@
+https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/configuring_and_managing_networking/configuring-a-network-bridge_configuring-and-managing-networking
+nmcli device status
+nmcli connection add type bridge con-name bridge0 ifname bridge0

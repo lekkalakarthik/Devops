@@ -1,0 +1,61 @@
+957b8da2c614
+
+docker exec -ti 8b3128ce303d /bin/bash
+ 
+ docker exec -ti --user root 8b3128ce303d /bin/bash
+ 
+
+Step 1) login to Jenkins container as root
+        apt update
+        apt upgrade
+
+step 2) install required packages
+
+apt-get install -y make build-essential libssl-dev zlib1g-dev libbz2-dev libreadline-dev libsqlite3-dev wget curl llvm libncurses5-dev libncursesw5-dev xz-utils tk-dev libffi-dev liblzma-dev vim
+
+Step 3) Install pyenv to install python higher version
+
+curl -L https://raw.githubusercontent.com/pyenv/pyenv-installer/master/bin/pyenv-installer | bash
+
+step 4) execute below commands for setting the path for pyenv
+
+export PATH="/root/.pyenv/bin:$PATH"
+eval "$(pyenv init -)"
+eval "$(pyenv virtualenv-init -)"
+
+Step 5) install python 3.7.3 with below command
+
+pyenv install 3.7.3
+
+Step 6) make the latest python as default
+
+pyenv local 3.7.3
+
+Step 7) install ansible using pip
+
+pip install ansible
+
+step 8 ) Add below line to ~/.bashrc to persist the path variables
+
+export PATH="/root/.pyenv/bin:$PATH"
+eval "$(pyenv init -)"
+eval "$(pyenv virtualenv-init -)"
+pyenv local 3.7.3
+
+step 9) exit from the Jenkins container and commit the image to save the above changes
+
+docker commit d41752b4cd07 ci-server:Upgraded_Python_Installed_ansible
+
+step10) stop the old container and start the container with the new image
+
+docker container stop cb7c35a45be3
+docker run -itd --restart=always ci-server:Upgraded_Python_Installed_ansible
+
+root@9573642b0e48:/# ansible --version
+ansible 2.9.4
+  config file = None
+  configured module search path = ['/root/.ansible/plugins/modules', '/usr/share/ansible/plugins/modules']
+  ansible python module location = /root/.pyenv/versions/3.7.3/lib/python3.7/site-packages/ansible
+  executable location = /root/.pyenv/versions/3.7.3/bin/ansible
+  python version = 3.7.3 (default, Feb  6 2020, 12:28:08) [GCC 6.3.0 20170516]
+root@9573642b0e48:/# python --version

@@ -1,0 +1,203 @@
+###############################################
+https://www.youtube.com/watch?v=MT4x9ErWI3E
+
+
+
+Docker images download in layers We no need to change complete image  we can change on of the layers
+
+docker info //this will give all the information
+docker version //it will give API version also
+docker search centos
+docker run centos echo hello
+docker pull centos
+docker ps -a or 
+docker images
+docker run -ti centos /bin/bash
+docker run -dti centos
+docker run -dti alpine
+docker run --help
+docker run -dit -p 80:80 --privileged=true --name centos2 --hostname=www.karthik.com centos2 "/sbin/init" it will pull centos image and run it and give a host name and connect
+docker attach centos
+docker prune containers
+docker exit
+docker run centos /usr/bin/free -m 
+docker ps --filter "status=exited" | grep 'weeks ago' | awk '{print $1}' | xargs --no-run-if-empty docker rm
+docker start centos
+docker rm centos
+docker top centos
+docker stats centos
+docker kill centos
+docker start 1
+docker rmi centos -f fourcefull delete centos
+docker save centos > centos.tar it will create centos.tar. Now copy to remote server
+docker save centos:latest | gzip > centos_latest.tar.gz
+docker load centos.tar it will create actual image in remote  server 
+docker comit container_ID will create new image 
+docker pause centos
+docker unpause centos
+docker build -t nmap . //it will create nmap image with current directiory docker file
+#############SAMPLE DOCKER file###########
+FROM centos
+MAINTAINER karthik <lekkalakarthik451@gmail.com
+#copy file from local
+ADD ./sample2.html /vat/www/index.html
+RUN sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-*;sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-*;
+RUN yum -y update;
+RUN yum install -y namp iproute;
+RUN yum -y clean all
+
+CMD ["/usr/bin/nmap", "-sn", "172.17.0.0/24"]
+##########################################################
+Docker Network******
+Docker network frivers
+1)bridge
+2)host
+3)overlay
+4)macvlan
+5)custome networks
+
+Docker network allways in 172.17.0.0/16
+we will hace docker0 bridge and default IP adress for this bridge is 172.17.0.1
+docker inspect
+macvlan driver directly conected to avialable router nics to find this one type ipconfig in comand promt in your computer get the CIDR ranges after that attach new network adapter to your VM with VM options.
+
+docker network create -d macvlan --subnet 192.168.48.0/24 --gateway 192.168.48.3 -o parent=ens224 asgard
+docker run -dit --ip 192.168.48.10 --network asgard --name nginx nginx //makesure the ip not used in our local network 
+
+macvlsn has two modes one is bridge and other is 802.iq
+
+docker network create -d macvlan --subnet 192.168.48.0/24 --gateway 192.168.48.3 -o parent=ens224.10 asgard //.10 create new interface
+
+docker network create -d ipvlan --subnet 192.168.48.0/24 --gateway 192.168.48.3 -o parent=ens224 asgard //in this mac address of docker container and host will be the same
+
+docker network create -d ipvlan --subnet 192.168.94.0/24 --gateway 192.168.48.3 -o parent=ens224 -o ipvlan_mode=l3 --subnet 192.168.95.0/24 asgard //for L3 we no need to give gateway address  even we create two subnets tose containers can talk to each other but can not comunicate outside world even hosted vm also. we need add route rules in our router(portal)
+
+ipvlan has two versions L2 (default) and L3
+
+https://www.youtube.com/watch?v=bKFMS5C4CG0
+
+check linux namespaces
+###########################
+There are two types of hypervisers type1 and type2
+docker run -p6000:1521 orcledb
+docker rm containerID //will delete stoped containers
+docker logs containerID //will show docker logs
+docker run -p6000:1521 --name devDB orcledb
+env //will give all 
+NAT //Network Adress translater
+docker network ls
+docker network inspect bridge
+ip addr show \\like ipconfig in docker container
+CTL +P CTL +Q will exit container with out killing
+docker network create --driver bridge oracleDBNETWORK
+docker network inspect oracleDBNETWORK
+docker run -dti -p6000:1521 -name ProdDB --network oracleDBNETWORK orcledb   \\ to run a container in specific network
+docker run -dti -p7000:7001 --name PRODweblogic --network weblogicNETWORK weblogicImage \\Running weblogic container in  weblogicNETWORK network
+docker network connect oracleDBNETWORK PRODweblogic \\ we are connecting PRODweblogic to oracleDBNETWORK Note it is alredy connected to weblogicNETWORK while running.
+connect to weblogic contaner you can ping DB server and visevarsa
+
+###############Docker Storage Drivers#################
+we have 3 Docker Storage Drivers
+1)AUFS
+2)Overlay
+3)btrfs (Butterfs)
+4)ZFS
+5)Device Mapper
+
+All these will present in /etc/docker/daemon.json
+
+In Doker we use COW stratagy COW(Copy on write)
+
+docker history <IMAGEID>  //it will give all the infoermation about image
+
+We can bind local file directory to docker file sysytem
+
+docker run --rm -dit --name bind1 --mount type=bind,source="$(pwd)"/bind1,target=/app nginix:latest
+
+docker exec bind1 ls -ltr /app
+
+docker run --rm -dit --name bind2 --v "$(pwd)"/bind1:/app nginix:latest (The above comand and this is same)
+
+docker exec bind1 ls -lt /app (this will show local file in docker)
+
+docker exec bind1 touch /app/ttt.txt (this will reflect in local)
+
+docker inspect bind1 | less
+
+
+########################Docker volume############################
+docker volume create myvol (it will create new volume)
+docker volume ls
+docker volume inspect myvol
+docker run -dit -v /u01 centos //it will persoist u01 data in randomhash volue in local server(/var/lib/docker/hast/_data01)
+
+docker run --rm -it --name voltest --mount source=myvol,target=/data nginix:latest /bin/sh
+
+docker run --rm -it --name voltest --mount source=myvol,target=/data,readonly nginix:latest /bin/sh //extra readonly option will aoid file locking problems
+
+docker run -dit --name myjenkins -v myvol:/var/jenkins_home -p 8080:8080 -p 5000:5000 jenkins/jenkins
+
+apt install nfs-server nfs-common
+
+Then need to create a nfs directory like mkdir /nfsdata
+
+after this need to add below line in /etc/exports
+
+/nfsdata *(rw,no_root_squash)
+everybody can access this folder
+
+after this we need to change owner permision for /nfsdata
+
+chown nobody:nogroup /nfsdata
+chmod 777 /nfsdata
+systemctl restart nfs-kernal-server
+systemctl status nfs-kernal-server
+showmount -e localhost
+
+docker volume create --driver local --opt type=nfs --opt o=addr=127.0.0.1,rw --opt device=:/nfsdata nfsvol  //it will create new nfs volume 
+
+docker run --rm -it --name nfstest --mount source=nfsvol,target=/data nginix:latest /bin/bash
+
+docker network create mango-network
+
+docker run -d -p 27017:27017 -e MONGO_INITDB_ROOT_USERNAME=admin -e MONGO_INITDB_ROOT_PASSWORD=password --name mongodb --net mango-network mongo   \\it will create mango DB with username and password options in mango network
+
+docker run -d -p 8081:8081 -e ME_CONFIG_MONGODB_ADMINUSERNAME=admin -e ME_CONFIG_MONGODB_ADMINPASSWORD=password -e ME_CONFIG_MONGODB_SERVER=mongodb --name mongo-express --net mango-network mongo-express //it will create mongo express and we can access GUI on port 8081 and this will attach to abvoe mango DB
+
+######################Dockercompose.yml##########################
+
+version: '3'
+services:
+  mongodb:
+    image: mongo
+    ports:
+      - 27017:27017
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=password
+    volumes:
+      - mongo-data:/data/db
+  mango-express:
+    image: mango-express
+    ports:
+      - 8080:8081
+    environment:
+      - ME_CONFIG_MONGODB_ADMINUSERNAME=admin
+      - ME_CONFIG_MONGODB_ADMINPASSWORD=password
+      - ME_CONFIG_MONGODB_SERVER=mongodb
+volumes:
+  mongo-data:
+   driver local
+##########################################################
+docker-compose config // you need to be same directory whre Dockercompose.yml is
+docker-compose -f Dockercompose.yml up
+docker-compose up -d --scale mongodb=3 //it will create 3 mongodb containers
+
+refer screen shot Docker_roketshot
+
+docker-compose -f docker-compose.yml down
+
+npm (Node package Manager)
+alpine is very small linux version
+
+Amazon ECR one of repository

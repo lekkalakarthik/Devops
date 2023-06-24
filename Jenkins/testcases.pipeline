@@ -1,0 +1,46 @@
+pwd
+cd afg-backend/afg-api
+export JAVA_HOME="/home/rubicon/jdk" 
+export PATH=$JAVA_HOME/bin:$PATH
+source="/home/rubicon/jenkins/CucumberUnitTestsRunnerTest.java"
+destination="/home/rubicon/jenkins/workspace/Run_Unit_Tests/afg-backend/afg-api/src/test/java/com/afg/loanassmt/util/tests/runner"
+
+set +x
+echo "Choice param pass is $Environment"
+
+case $Environment in 
+    #case 1 
+    "CI")  cat $CI_YML > /tmp/application.yml
+    
+           cp $source $destination
+    
+           echo "executing Cucumber Unit tests for CI Environment"
+    
+	       env 'SPRING_CONFIG_ADDITIONAL-LOCATION=/tmp/application.yml' mvn -X clean install -Dtest=CucumberUnitTestsRunnerTest
+          
+          ;; 
+           
+      
+    #case 2 
+    "DEV") cat $DEV_YML > /tmp/application.yml
+           
+           echo "executing Cucumber Unit tests for Dev Environment"
+           
+           cp $source $destination
+           
+	       env 'SPRING_CONFIG_ADDITIONAL-LOCATION=/tmp/application.yml' mvn -X clean install -Dtest=CucumberUnitTestsRunnerTest
+           
+           ;; 
+            
+    #case 3  
+    "UAT") cat $UAT_YML > /tmp/application.yml
+    
+           cp $source $destination
+           
+           echo "executing Cucumber Unit tests for UAT Environment"
+           
+	       env 'SPRING_CONFIG_ADDITIONAL-LOCATION=/tmp/application.yml' mvn -X clean install -Dtest=CucumberUnitTestsRunnerTest
+                           
+           ;;
+          
+esac

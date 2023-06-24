@@ -1,0 +1,13 @@
+import re
+import os
+import subprocess
+p='/home/opc/docker_tags'
+os.chdir(p)
+a=subprocess.check_output('ls -ltu',stderr=subprocess.STDOUT,shell=True)
+a1=a.decode()
+b=re.findall(r'uoa\S+',a1)
+k=len(b)
+if k>14:
+    for i in range(15,k):
+        os.remove(r'%s'%b[i])
+        print('%s got removed'%b[i])

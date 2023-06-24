@@ -1,0 +1,829 @@
+https://www.youtube.com/watch?v=RIKI2AMCiK0&list=PL2qzCKTbjutIyQAe3GglWISLnLTQLGm7e&index=20
+https://docs.ansible.com/
+cat /etc/redhat-release
+#############Extra libreries for OS###############
+subscription-manager repos --enable rhel-*-optional-rpms \
+                           --enable rhel-*-extras-rpms \
+                           --enable rhel-ha-for-rhel-*-server-rpms
+
+
+dnf install python3.9 -y
+
+ln -s /etc/alternatives/python3 python
+
+update-alternatives --config python3
+
+python3 --version
+
+python3 -m pip -V
+
+python3 -m pip install --upgrade pip
+
+yum install https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
+
+yum install ansible -y
+################################################
+There are two importent files in Asible
+1)inventory   // will have list of servers
+2)ansible.cfg  // what user you want to work and location of inventory and other configurations
+
+** do not install any packages with pip with root user it may conflict other pakages
+** if you do not have python also we can work on clint nodes with RAW modules
+** once we execute the ansible command which will have modile first of all ansible controller will copy that module to all worker nodes parallally and python will execute remaining things in worker nodes. it will copy module in home directory(~/.ansible/tmp)
+we can change this doirectory 
+
+
+
+
+#######################################
+yum install ansible
+ansible --version
+Create a genric user in all Clints and Master
+with root visudo and add 
+karthik     ALL=(ALL)    NOPASSWD: ALL
+karthik        ALL=(ALL)       NOPASSWD: ALL
+Make sure PasswordAuthentication yes in all servers in /etc/ssh/sshd_config file
+service sshd restart/systemctl restart sshd
+swith to karthik user and create ssh keys
+ssh-keygen command and copy to remotote clients in /home/karthik/.ssh server
+ssh-copy-id ansible-0 // ssh-copy-id inbuild linux command to copy the keys to remote server
+Upadate inventory file with remote servers
+ansible all -m ping (or) ansible all -m ping -o  ///Check the connectivity
+ansible all -m ping -i /tmp/hosts
+export ANSIBLE_HOST_KEY_CHECKING=False  in newer cersion it is false by default
+you can add above vairable in ancible.cfg 
+ansible IP1:IP2 -m ping it willl check only 2 servers
+ssh-copy-id worker-1 // we can use our master node also as a client 
+ansible apiservers -m ping -i hosts2
+###############################################
+Ansible will take reference of ansible.cfg on below preority.
+1) ANSIBLE_CONFIG variable if we set the variable it take on priority fist
+2) ./ansible.config
+3) ~/.ansible.config // here . is not hiden it will give priority
+4) /etc/ansible/ansible.config // it has very least priority 
+#############################
+
+ANSIBLE_KEEP_REMOTE_FILES=1 this will keep the copied module in worker node 
+ANSIBLE_KEEP_REMOTE_FILES=1 ansible all -m shell -a "uptime" (~/.ansible/tmp) a .py file create
+tree /etc/ansible
+ansible adhoc syntax >> ansible [-i inventory_file_location] servername:group1:group2 module (-m) (modulename) [-a arguments]
+ansible-doc -l  // list all the modules
+ansible-doc shell
+ssh-copy-id 155.248.248.58 it will copy to same user home directory in remote 
+**We need to add forks = 5 in ansible.cfg file it will execute 5 threds parallally at a time we can increase the count based on our controller capacity
+ansible all -m shell -a "sleep 5; echo 'Hi'"
+**Ansible is use push mechanisum, means controller will push modules to workers/clints. But, other configuration toll use pull mechanisum.
+ansible -i inventory_file_path all --list-hosts
+ansible -i inventory_file_path ungrouped --list-hosts
+Disable HOST key checking false in ansible.cfg file for no host key checking
+ansible-doc -l |  more
+ansible-doc -s yum
+ansible appgroup -m ping
+[groupname:children]
+group1
+group2
+
+ansible all -m shell -a "uname -a;df -h" (or) ansible all -m shell -a "uname -a;df -h" -v // -v will give which configuration file it using
+
+ansible appgroup -m yum -a "name=httpd state=present" -s
+
+ansible appgroup -m yum -a "name=httpd state=started" -s
+
+add bello lines in all servers /etc/sudoers
+
+ansadm ALL=NOPASSWD: ALL
+
+-s tell to ansible to sudo to root
+
+nmap is network maping service
+
+sestatus to check selinux status
+##############
+ansible all -m copy -a "src=/tmp/testfile dest=/tmp/testfile"  // if no changes again it will not copy it is idempodent
+ansible DB -m copy -a "content='sample test' dest=/tmp/testfile1" //it will overwriten all content 
+ansible APPGROUP -m copy -a "content='sample test sucess' dest=/tmp/testfile1 dackup=true"
+ansible all -m copy -a "content='this is from content module' dest=~/test1"
+ansible all -m copy -a "content='this is from content2 module' dest=~/test1 backup=yes"
+ansible db -m copy -a "content='{{inventory_hostname}}_is the hostname for database servers' dest=/tmp/test1"
+#####################################################################################
+https://www.youtube.com/watch?v=jITR1EqcaUo&list=PL2qzCKTbjutIyQAe3GglWISLnLTQLGm7e&index=15
+
+ansible db -m fetch -a "src=/tmp/test1 dest=./demo"  //it will create a directory stracture 
+ansible db -m fetch -a "src=test1 dest=./demo/{{inventory_hostname}}_demo.txt flat=yes" // if flat is yes it wont create any directory stracture
+** Search ansible variables
+file module is to change ownership also
+ansible db -m file -a "path=/tmp/hello.txt state=touch mode=0777"
+ansible db -m file -a "path=/tmp/hello.txt state=absent" // it will remove file from remote diectory
+ansible db -m file -a "path=/tmp/hello state=directory"  // it will create directory
+ansible db -m file -a "path=/etc/hello state=directory" -b (become to root)
+ansible db -m file -a "path=/etc/hello state=directory" -b (become root it will promt for password)
+//visudo add oracle  ALL=(ALL) NOPASSWD: ALL
+ansible all -m yum -a "name=git state=latest" -b
+ansible all -m yum -a "name=git state=absent" -b
+
+(Setup Module)  //19th episode
+ansible all -m setup
+ansible all -m setup -a "filter=ansible_mounts"
+Ansible have setup module this will collect remote host facts we we write playbook setup module is called by default.
+
+(Custom Facts) //20th episode
+
+To create custom facts create /etc/ansible/fatcs.d directory in all ansible nodes. and all files should be with extention .facts and need to have execute permison.
+git --version | awk '{print$1}'
+
+Dynemic inventory //21th episode
+
+Custom dynemic inventory //22 Example is ec2 with boto. But try for OCI servers
+
+raw module (If no python in managed node) //23 episode
+
+debug module //24 episode
+ansible-playbook -h
+ansible-playbook main.yml --list-tags
+ansible-playbook
+ansible-playbook print_any_msg.yml --syntax-check // it will check the syntax
+
+Comandline Arguments //26th episode
+
+ansible-playbook main.yml --extra-var "x=32"
+
+ansible-playbook main.yml -e "x=32" or ansible-playbook main.yml -e x=32 ansible-playbook main.yml -e "x=32 y=89"
+
+ansible-playbook main.yml -e "{'x': 32}" or ansible-playbook main.yml -e "{'x': 32, 'y': 56}"
+
+
+Comparison Operators (X==Y or X != Y and other operators //28 episode
+
+Setting ubuntu server as ansible node \\29 episode
+
+
+Block concept and error handling \\30 episode
+
+block rescue allways same like try catch and finnally  in phyton
+
+
+Defference beetween import and include \\31 episode
+
+Install tomcal
+
+alternatives --config java
+
+templete command will copy dynemic file to destination means a file having varibles the variable file name should be end with .j2
+
+Provisioning AWS instance with Ansible \\33 episode
+
+pip install boto boto3 --user
+pip install awscli --user
+aws configure
+
+
+Import will load brfore startting execution means if you have static data you can use import
+include will load/parse at the time of execution if you have dynemic variables or data you can use include
+
+Ancible vault protect sencitive data //episode 34
+
+ansible-vault encrypt somefile.xml
+
+
+
+
+ we need to make sure to create user with useradd -m karthik -m will create default home directory for karthik user
+
+
+ansible-playbook main.yml --tags addnew_group
+
+if you want to run on single node insted of all nodes use -l option
+
+state : present or latest present means just check if it is threre latest means install th elatest one.
+
+ssh-copy-id hostname
+
+-i will give explicitly call your inventory file
+
+ANSIBLE_KEEP_REMOTE_FILES=1 this will keep module in remote host
+EX:ANSIBLE_KEEP_REMOTE_FILES=1 ansible all -m ping
+
+
+
+EX:ansible db -m setup
+Ex:ansible 10.4.6.123 -m setup -a "filter=ansible_mounts"
+Ex:ansible 10.4.6.123 -m setup -a "filter=ansible_local"  ansible-local will have custom facts
+we can create custom facts in remote hosts also in /etc/ansible/facts.d directory and create any shell or python script with extention .fact
+EX: 
+#! /bin/bash
+git_ver=$(git --version | awk '{print $3}')
+httpd_ver=$(hyypd --version | awk 'NR==1 {print $3}'
+cat << EOF
+{ "git_ver": "$git_ver",
+   "httpd_ver": "$httpd_ver"
+}
+EOF   
+##Read
+scalar
+sequence
+map
+
+
+#########https://www.youtube.com/watch?v=4svWKtaTE7g&list=PLd8alL65M1GZXkfgwk9eyUeQ3sAAkEIj0&index=3####
+another tools
+cheff
+saltstack
+puppet
+
+Ansible will have its interpreter in tareget servers like in linux it is python and it is windows powershell
+
+**If we want to controll network swithes or cloud or Docker coantainer trought Ansible these will not have interpreter in this case ansible directly push(exicte) the ansible command to target system will not copy any code to target sysytem
+
+Ansible things
+Host inventtory
+Ansible.cfg
+roles
+playbooks
+modules
+API's  *****
+custome modules //We can create our own modules with python
+pugings  //for events or loging
+connetion pluggins // to connect various system
+** Ansible will connect remothostr as per below
+1) Linux  >>>> openssl
+2) Windows  >> WinRM
+
+Check Ansible GUI
+
+Ansible use cases
+1) Configiuration management    2) Provisioning    3) security   4) Archesrtation 5) CI CD 6) Deployments
+
+If you want to monitor Windows server as a manged node. we shoud have powershell and .net version 4 unadali
+
+What is selinux 
+
+We will have two inventory files in Ansible
+
+1) Static (default)
+2) Dynemic 
+
+We can give server ranges in hostfile
+
+[Linuxservers]
+server[a:z] // means in linux servers goroup we will be having 26 servers those or servera, serverb .... serverz
+
+[DBservers]
+server[1:100] // means in DB servers goroup we will be having 100 servers
+
+[largeserver]
+192.168.[250:252].[1-100] //it will have 300 servers 192.168.250.1-100,192.168.251.1-100, and 192.168.252.1-100
+
+[groupname:children]
+group1
+group2
+
+there are two other inbuild groups in inventory file
+
+1) ungroup
+2) all
+
+ansible-inventory --graph
+
+######https://www.youtube.com/watch?v=qre5X7esUy4&list=PLd8alL65M1GZXkfgwk9eyUeQ3sAAkEIj0&index=5######
+
+Ansible.cfg will have 2 sections
+
+1) Default section we know it will have all valiues like Forks, inventarory file loacation,remote user, Keep module file in remote server and remote server modules copy location etc
+2) privilage_escalation How ansible run commands on managed nodes
+
+
+[defaults]
+
+inventory=hosts
+host_key_checking=False
+forks=5
+deprecation_warning=False
+
+[privilege_escalation]
+become = true
+become_method = sodo
+become_user = root
+become_ask_pass = false
+
+For a ansible module there will be 4 states  you need to check module is maintaining some or Ansible core, Comunity or patner(RHL)
+
+
+
+1) Preview
+2) stable
+3) depcicated
+4) removed
+##########################https://www.youtube.com/watch?v=6vgexNdZf0k&list=PLd8alL65M1GZXkfgwk9eyUeQ3sAAkEIj0&index=6###############
+
+Difference beetwin shell and command module in command module we can not use | and redirect >> << symbols those will be aviualable in shell module
+ansible all -m shell -a "more /etc/fstab | grep fstab"
+ansible all -m command -a "more /etc/fstab | grep fstab"
+ansible-doc shell // it will give man page
+ansible all -m service -a "name=sshd state=started"
+
+ussing the raw module assume you dont have the python in your remote mechine and want to install it with raw module
+
+ansible -u root -i /tmp/inventory newserver --ask-pass -m raw -a "yum install python3 -y"
+
+###############vsftpd.yaml
+- name: deploy Vsftpd
+  hosts: appservers
+  tasks:
+  - name: install Vsftpd
+    yum: 
+	    name: vsftpd
+  - name: enable vsftpd
+    service:
+	    name: vsftpd
+	    enable: true
+  - name: create a file
+    copy:
+	    content: "hi writing from playbook"
+	    dest: /tmp/mywrite
+	    force: no
+
+ansible-playbook vsftpd.yaml
+ansible-playbook -C vsftpd.yaml  //it will do dryrun
+ansible-playbook --syntax-check error.yaml
+ansible-playbook --vvvv error.yaml
+###########https://www.youtube.com/watch?v=OLy05KtdwYA&list=PLd8alL65M1GZXkfgwk9eyUeQ3sAAkEIj0&index=7
+We can use variables in different levels
+1) In playbooks
+2) In inventory file ( it is got depricated)
+3) with inclusion of files (best option)
+variable nameshoud start with letter and no . and space init(no special charectres)
+to get the variable we need to give in {{VAR}} double curly braces
+if we want to usevariables in any condition we can not use double curly braces
+if variable is first element we need to use double quotes "{{var}}"
+
+%%%%%%%%%%%
+---
+- name: create rashmitha user with variable
+  hosts: appservers
+  become: yes
+  vars:
+    name: rashmitha
+  tasks:
+  - name: creating {{name}} user
+    user:
+      name: "{{name}}"
+...
+%%%%%%%%%%%---
+- name: create {{name}} user with variable
+  hosts: appservers
+  become: yes
+  vars_files:
+  - /tmp/myfile.yaml
+  tasks:
+  - name: creating {{name}} user
+    user:
+      name: "{{name}}"
+...
+
+%%%%%%%%%%%
+
+
+ tasks:
+  - name: creating {{name}} user  // here variable is not first element so we are not using in ""
+    user:
+      name: "{{name}}" // here virable is first element so using in double quotes
+
+variable presidence: we can define vairables in different types of scops
+
+global scope : inventory 
+play scope : if we mention in playbook 
+host scope: trough inclusion of files
+ if we give trough command line means while running play book as argument
+ Ex: ansible-playbook users.yaml -e "name=kiran" // it will take as priority
+
+there are multiuple built in variuables in ansible
+inventory_hostname
+host_vars
+groups
+ansible_version
+
+ we need to go and check all built in variables
+ 
+ How to give variables in inventory file
+ 
+ Ex -1
+ [web_servers]
+ server1 default_pakage=httpd   // we are giving in host level
+ 
+ Ex -2
+ [web_servers]
+ server1
+ [web_servers:vars]  >> similar to children key word
+ default_pakage=httpd  // we are assigning to all servers in that group 
+ 
+ best practice is to create a file in project directoty
+ $PROJECT_HOIME/host_vars/app-1 // host name and viarable file name should be same so anisible will pic the file automatically
+ $PROJECT_HOIME/group_vars/appservers //group name and viarable file name should be same so anisible will pic the file automatically
+ 
+ %%%%%%%%%%%% get_group_variables.yaml
+---
+- name: getting variables from group directory
+  hosts: appservers
+  tasks:
+  - name: getting your name
+    debug:
+      msg: "your name is {{My_name}}"
+  - name: getting surname
+    debug:
+      msg: "your surname is {{My_surname}}"
+...
+ansible-playbook get_group_variables.yaml -e "My_name=kiran My_surname=reddy" //comand line arguments will have more priority
+Malti value variables **
+
+In Malti value variables we can use arrays(list) or dictoineries  
+
+example
+user1_first_name: kiran
+user1_last_name: lekkala
+user1_directory: /home/kiranl
+user2_first_name: pawan
+user1_last_name: galipally
+user1_directory: /home/pawang
+
+ >>>
+- users:
+  - user1:
+      first_name: kiran
+	  last_name: lekkala
+	  directory: /home/kiranl
+  - user2:
+      first_name: pawan
+	  last_name: galipally
+	  directory: /home/pawang  
+	 
+users.user1.first_name is equal to kiran
+users[user][first_name] is equal to kiran
+
+>>user1:{first_name:'kiran', last_name='lekkala', directory='/home/kiranl'}
+ 
+ the problem with dictonary(list) is we can not use loops like with_items we can not use
+ if we use arry we can use loops
+
+ansible-vault create get_group_variables.yaml
+ansible-vault view get_group_variables.yaml
+ansible-vault edit get_group_variables.yaml
+>> it will ask for password
+to encrypt existing files
+ansible-vault encrypt get_group_variables.yaml
+ansible-vault decrypt get_group_variables.yaml
+ansible-vault rekey get_group_variables.yaml it will change password
+ansible-playbook --ask-vault-pass get_group_variables.yaml
+echo "asd" > secret.txt; chmod 400 secret.txt
+Now pass this file to derypt the encrypted yaml file 
+ansible-playbook --vault-password-file=secret.txt get_group_variables.yaml
+%%%%%%%%%%%%get_group_variables.yaml
+---
+- name: getting variables from group directory
+  hosts: appservers
+  tasks:
+  - name: getting your name
+    debug:
+      msg: "your name is {{My_name}}"
+  - name: getting surname
+    debug:
+      msg: "your surname is {{My_surname}}"
+...
+%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+
+https://www.youtube.com/watch?v=OLy05KtdwYA&list=PLd8alL65M1GZXkfgwk9eyUeQ3sAAkEIj0&index=7  54
+
+AES256 encription
+
+ansible appservers -m setup
+
+ansible-playbook facts.yaml
+
+
+&&&&&&&&&facts.yaml
+---
+- name: print facts
+  hosts: appservers
+  tasks:
+  - name: print fatcs from task
+    debug:
+	  var: ansible_facts
+...
+gather_facts setting no will increase the speed of ansible execution
+
+#####VERY importent https://www.youtube.com/watch?v=Y_2oU6Hv3JA&list=PLd8alL65M1GZXkfgwk9eyUeQ3sAAkEIj0&index=8 ########
+
+before ansible 2.5 we used to use with_item key word for loop. but, no wit got changed to loop
+@@Register viarables with loops
+
+register is key work to store the previous command output to a viarable. we can use thi svariable in future in the code
+
+when statement is used in play book for conditions when the satement i strue then only the task will be executed
+%%%%%%demo.yaml
+
+
+---
+- name: Demo when
+  hosts: appservers
+  become: yes
+  vars:
+    supported_distros:
+    - OracleLinux
+    - Centos
+    - Fedora
+  tasks:
+  - name: install nginx
+    yum:
+      name: nginx
+      state: present
+    when: ansible_distribution in supported_distros
+...
+
+https://www.youtube.com/watch?v=Y_2oU6Hv3JA&list=PLd8alL65M1GZXkfgwk9eyUeQ3sAAkEIj0&index=8
+
+&&&&&&when_conditions %%%%
+---
+- name: using multipole conditions
+  hosts: appservers
+  tasks:
+  become: yes
+  - name: task name is my task
+    package:
+	  name: httpd
+	  state: installed
+	when:
+	- ansible_distribution == 'RedHat'
+	- ansible_memfree_mb > 1000
+...
+
+%%%%%%%%start_httpd_when_firewalld_is_down.yaml
+---
+- name: using multiple conditions
+  hosts: appservers
+  tasks:
+  become: yes
+  - name: get the firewalld status
+    command: 'systemctl is-active firewalld'
+	ignore_errors: yes
+	register: firewalld_result
+  -name: start httpd when firewalld is down
+   service: 
+     name: httpd
+	 state: restarted
+   when:
+   - firewalld_result.rc == 0
+...
+
+%%%%%%%%%%%When_And_Or_conditions
+
+---
+- name: using multiple conditions
+  hosts: appservers
+  become: yes
+  tasks:
+  -name: start httpd when two conditions satisfied
+   service: 
+     name: httpd
+	 state: restarted
+   when: > ( ansible_distribution == OracleLinux and ansible_memfree_mb > 512 ) or ( ansible_distribution == Centos and ansible_memfree_mb > 512 )
+...
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%HNDLERS%%%%%%%%%%%%%%%
+
+handlers will allow to run the second task when the first task is completed successfully for this one we will use the notify module. we use the handlers mostly on restarts services and reboots.
+
+When all tasks completed successfully then only handlers will run. One Task can run multiuple handlers. If the task gets fail handler will come out from the play book. we explicitly tell ansible to run handler with fail.
+
+force_handler: false
+ 
+ %%%%%%%%%%%%%%handlers.yaml%%%%%%%%%%%%%%
+---
+- name: set up webserver
+  hosts: appservers
+  become: yes
+  tasks:
+  - name: install latest httpd
+    yum:
+      name: httpd
+      state: latest
+  - name: copy index.html
+    copy:
+      src: '/home/karthik/ansible/index.html
+      dest: '/var/www/html/index.html'
+    notify:
+    - restrt_web
+  - name: copy nothing
+    copy:
+      src: '/tmp/nothing'
+      dest: '/var/www/html/index.html'
+  handlers:
+  - name: restrt_web
+    service:
+	  name: httpd
+	  state: restarted
+...
+  
+Handler will runs once only. if there or no changes items it will not run again
+app-1                      : ok=4    changed=2 ****   unreachable=0    failed=1    skipped=0    rescued=0    ignored=0
+
+%%%%%%%%%%%%%blocks%%%%%%%%%%%%%%%%%%%%%
+
+Blocks are super set of tasks. logical group of tasks can be run in bocks. if we use blocks we will have error handler. it is like try cattch in jave
+Block >> mail bolk are tasks
+rescue >> if block get fails
+always >> irespective of all it will run 
+
+** very importent thing is we can not use loops in blocks
+
+%%%%%%%%%%%%%%%%blocks.yaml%%%%%%%%%%%
+---
+- name: testing block
+  hosts: appservers
+  vars:
+  - frute: apple
+  - tree: jama
+  tasks:
+  - name: this is original task
+    block:
+	  name: print frute
+	  debug:
+	    msg: this is frute block frute is {{apple}}
+	  when: frute == 'apple'
+...
+	  
+
+%%%%%%%%%%%%%%blocks2.yaml%%%%%%%%%
+
+---
+- name: testing block
+  hosts: appservers
+  vars:
+  - frute: apple1
+  - tree: jama
+  tasks:
+  - name: this is original task
+    block:
+    - name: erroring in the block
+      shell:
+        cmd: 'cat /tmp/nothing'
+    rescue:
+    - name: rescuing
+      shell:
+        cmd: 'touch /tmp/resue'
+    always:
+    - name: alwaysing
+      shell:
+        cmd: 'touch /tmp/always'
+...
+%%%%%%%%%%
+*** resuce block will execute when only block block got errored. resuce block will not execute if it got skipped
+
+%%%%%%%%%%%%%%%filed_when.yaml%%%%%%%%%
+---
+- name: demonstarting failed_when
+  hosts: appservers
+  tasks:
+  - name: skhip if found hello
+    command: echo 'hello world'
+	ignore_errors: yes
+	register: command_result
+	filed_when: "'world' in commans_result.stdout"
+  - name: see if we get this
+    debug:
+	  msg: you got it
+..
+%%%%%%%%%%%%%%%%%%fail.yaml%%%%%%%%%%%
+---
+- name: show fail module
+  hosts: appservers
+  tasks: 
+  - name: do something imposibe
+    lvol:
+	  lv: lvnothing
+	  vg: vgnothing
+	  size: 1G
+	register: result
+	ignore_errors: yes
+  - name: show command results
+      debug:
+	  var: result.err
+  - name: print nice error message after failure
+    fail:
+      msg: volume group does not exsist
+    when: "not found'" in results.msg"	  
+##############################
+%%%%%%%%%%%%%%%COPY MODULES IN ANSIBLE%%%%%%%%%%%%%%
+lineinfile : it will change only a line in the file
+blockinfile : it will change a block in file
+copy: it will copy a file from controller to managed node
+fetch: it will fetch file from remote node
+file: we can do multiple things with this module
+%%%%%%%%%%%file.yaml
+---
+- name: show file module
+  hosts: appservers
+  become: yes
+  tasks: 
+  - name: create a file
+    file:
+	path: /tmp/filemodulecreated
+	owner: kiran
+	mode: 0640
+	state: touch
+	setype: public_content_rw_t
+...
+%%%%%%%%%%%copy.yaml
+---
+- name: describe copy module
+  hosts: appservers
+  become: yes
+  tasks:
+  - name: simple copy task
+    copy:
+      src: /etc/hosts
+      dest: /tmp
+  - name: showing blockinfile
+    blockinfile:
+      path: /tmp/hosts
+      block: |
+        172.189.24.26 idontknow
+        172.189.24.27 youdontknow
+      state: present
+  - name: do checksum
+    stat:
+      path: /tmp/hosts
+      checksum_algorithm: md5
+    register: result
+  - name: show check sum
+    debug:
+      msg: "{{result.stat.mimetype}}"
+  - name: get the back up copy with fetch
+    fetch:
+      src: /tmp/hosts
+      dest: /tmp
+...
+
+%%%%%%%%%%%%%%%%%%%
+fatal: [app-1]: FAILED! => {"changed": false, "msg": "value of checksum_algorithm must be one of: md5, sha1, sha224, sha256, sha384, sha512, got: mds"}
+
+***jinja2 templete is used to do advanced changes to file. we can change the file using variables and facts
+
+elements  jinja2 templtes
+1) data
+2) vars  //variables
+3) expresions 
+4) conrtolstractures
+
+conrtolstractures is very importent concept we can use for loop and we can use if statement 
+
+updated the /etc/hosts file with jinja2 templete with conrtolstractures in thi sexample we are using for loop.
+
+%%%%%host2.j2%%%%%%
+
+{% for host in groups['all'] %}
+{{hostvars[host]['ansible_facts']['default_ipv4']['address']}}{{hostvars[host]['ansible_facts']['fqdn']}}{{hostvars[host]['ansible_fa
+cts']['hostname']}}
+{% endfor %}
+
+%%%%%%%%%%%%%%%%%%%%%%%jinja2_constractures.yaml%%%%%%%%%
+---
+- name: describe constarctures in jija2 template
+  hosts: all
+  become: yes
+  tasks:
+  - name: updating all servers hosts file with jinja2
+    template:
+      src: hosts.j2
+      dest: /etc/hosts
+      backup: yes
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+         ROILES
+Roles is used for reusability
+in reyal time site.yaml is main yanl file it will call any palaybook, file.yaml and lamp.yaml we will have these files
+** ansible roles and ansible playbooks are prity much simmilar. t is resuable component
+Role is collection of task, variables, files 
+in ansible galaxy we can download predefined roles
+
+https://galaxy.ansible.com/
+/home/karthik/.ansible/roles/geerlingguy.nginx
+cd /home/karthik/.ansible/collections/ansible_collections/ataha/linux_patching
+
+roles also have same prioarity as ansible.cfg 
+/roles will have highest priority
+
+ ansible-galaxy search -- author  ansible-galaxy search cloud 
+ 
+ ansible-galaxy info adityakumarsahu0707.ec2_instance_role
+ ansible-galaxy list
+ ansible-galaxy remove geerlingguy.nginx
+ ansible-galaxy init  //if we want to create a custome role it will create directoru tracture for you
+ 
+ %%%%%requirement.yaml%%%%%%%%%%%%
+ - src: geerlingguy.docker
+ 
+ ** If we have roles and task in playbook roles will execute first and then tasks  if both get success handlers will execute
+ We can change this by using
+ pre_tasks: 
+ post_tasks:

@@ -1,0 +1,37 @@
+pipeline{
+
+   agent any
+
+    stages {
+
+   stage('UAT : Update Docker Secret ?') {
+        when {
+               expression { return  env.param1 == 'yes'} 
+            }
+       
+       steps {
+          sh 'echo "$param1"'
+          sh 'echo "$param2"'
+          sh "printenv | sort"
+          echo "am printing this is because you give the value yes"
+          script { 
+         if (env.BRANCH_NAME == 'master') 
+         {
+          echo "Updating Docker Secret"
+          echo "${env.userInput}"
+          echo "This seams working as it coming from if loop" 
+          
+          
+         } else {
+        // do what ever you want when skipping this build
+          echo "Skipping Docker Secret Update and proceeding to the next stage" 
+          echo "This is not working as we give donot"
+      }   
+      }
+          
+         
+    } 
+   }
+}
+}
+
