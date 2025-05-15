@@ -1,3 +1,4 @@
+testing form other repo
 https://www.youtube.com/watch?v=RIKI2AMCiK0&list=PL2qzCKTbjutIyQAe3GglWISLnLTQLGm7e&index=20
 https://docs.ansible.com/
 cat /etc/redhat-release
