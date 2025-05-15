@@ -1,4 +1,4 @@
-nname: Print variables
+name: Print variables
 
 on:
   workflow_dispatch 
