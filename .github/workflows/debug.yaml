@@ -14,3 +14,5 @@ jobs:
 
       - name: Another Step
         run: ls -la
+      - name: Dump GitHub context
+        run: echo "${{ toJson(github) }}"
