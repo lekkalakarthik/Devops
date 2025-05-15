@@ -1,0 +1,9 @@
+name: calling workflow
+
+on:
+  workflow_dispatch
+jobs:
+  call-deploy:
+    uses: ./.github/workflows/called.yml
+    with:
+      environment: "production"
