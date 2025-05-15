@@ -7,7 +7,7 @@ subscription-manager repos --enable rhel-*-optional-rpms \
                            --enable rhel-ha-for-rhel-*-server-rpms
 
 
-dnf install python3.9 -y
+dnf install python3.9 -y //
 
 ln -s /etc/alternatives/python3 python
 
