@@ -1,14 +1,15 @@
 name: Print variables
 
 on:
-  workflow_dispatch 
+  workflow_dispatch
 
 jobs:
   Print:
     runs-on: ubuntu-latest
+    environment: dev  # This is required to load env-level vars/secrets
     steps:
       - run: |
-         echo ${{ secrets.API_KEY }}
-         echo ${{ secrets.REPO_SEC }}
-         echo ${{ env.DB_USER }}
-         echo ${{ env.REPO_VAR }}
+          echo "API_KEY: ${{ secrets.API_KEY }}"
+          echo "REPO_SEC: ${{ secrets.REPO_SEC }}"
+          echo "DB_USER: ${{ env.DB_USER }}"
+          echo "REPO_VAR: ${{ env.REPO_VAR }}"
