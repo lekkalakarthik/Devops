@@ -1,0 +1,16 @@
+name: Debug Step Example
+
+on: [workflow_dispatch]
+
+jobs:
+  debug-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Sample Step
+        run: echo "Testing debug"
+
+      - name: Another Step
+        run: ls -la
