@@ -1,0 +1,14 @@
+name: Print variables
+
+on:
+  workflow_dispatch 
+
+jobs:
+  Print:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+         echo ${{ secrets.API_KEY }}
+         echo ${{ secrets.REPO_SEC }}
+         echo ${{ var.DB_USER }}
+         echo ${{ var.REPO_VAR }}
