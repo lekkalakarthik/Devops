@@ -18,3 +18,4 @@ jobs:
           echo "DB_USER: $DB_USER"
           echo "REPO_VAR: $REPO_VAR"
           echo "My name: ${{ env.MY_NAME }}"
+          echo $DB_USER
