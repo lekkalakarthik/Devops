@@ -10,9 +10,11 @@ jobs:
     env: # This loads both repo and environment-level variables into the shell
       DB_USER: ${{ vars.DB_USER }}
       REPO_VAR: ${{ vars.REPO_VAR }}
+      MY_NAME: "karthik"
     steps:
       - run: |
           echo "API_KEY: ${{ secrets.API_KEY }}"
           echo "REPO_SEC: ${{ secrets.REPO_SEC }}"
           echo "DB_USER: $DB_USER"
           echo "REPO_VAR: $REPO_VAR"
+          echo "My name: ${{ env.MY_NAME }}"
