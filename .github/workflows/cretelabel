@@ -1,0 +1,26 @@
+name: Create Missing Labels
+
+on:
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  create-labels:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create Labels
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Check/create "karthik" label
+          if ! gh api repos/${{ github.repository }}/labels/karthik --silent; then
+            gh api repos/${{ github.repository }}/labels -X POST \
+              -f name="karthik" \
+              -f color="FF0000"  # Red color
+          fi
+
+          # Check/create "kiran" label
+          if ! gh api repos/${{ github.repository }}/labels/kiran --silent; then
+            gh api repos/${{ github.repository }}/labels -X POST \
+              -f name="kiran" \
+              -f color="2496ED"  # Docker blue
+          fi
