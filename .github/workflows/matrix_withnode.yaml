@@ -1,0 +1,28 @@
+name: Check Matrixs
+
+on:
+  workflow_dispatch
+
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: [14, 16, 18]
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      - run: |
+          echo "Node version:"
+          node --version
+          echo "Installing npm@9.6.7"
+          npm install -g npm@9.6.7
+          echo "npm version after install:"
+          npm --version
+
+      
