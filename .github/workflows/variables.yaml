@@ -1,4 +1,4 @@
-name: Print variables
+nname: Print variables
 
 on:
   workflow_dispatch 
@@ -10,5 +10,5 @@ jobs:
       - run: |
          echo ${{ secrets.API_KEY }}
          echo ${{ secrets.REPO_SEC }}
-         echo ${{ var.DB_USER }}
-         echo ${{ var.REPO_VAR }}
+         echo ${{ env.DB_USER }}
+         echo ${{ env.REPO_VAR }}
