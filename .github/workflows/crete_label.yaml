@@ -6,6 +6,8 @@ on:
 jobs:
   create-labels:
     runs-on: ubuntu-latest
+    permissions:
+      issues: write  # give write permissions
     steps:
       - name: Create Labels
         env:
