@@ -1,0 +1,43 @@
+name: Close Stale PRs
+
+on:
+  
+  workflow_dispatch:     # Allows manual trigger
+
+jobs:
+  close-stale-prs:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Close PRs with label 'Stale'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const labelToClose = 'Stale';
+            const { data: pullRequests } = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 100
+            });
+
+            for (const pr of pullRequests) {
+              const { data: labels } = await github.rest.issues.listLabelsOnIssue({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pr.number
+              });
+
+              const hasStaleLabel = labels.some(label => label.name === labelToClose);
+
+              if (hasStaleLabel) {
+                await github.rest.pulls.update({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number: pr.number,
+                  state: 'closed'
+                });
+
+                console.log(`Closed PR #${pr.number} - ${pr.title}`);
+              }
+            }
