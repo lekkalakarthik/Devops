@@ -3,11 +3,12 @@ name: Close Stale PRs
 on:
   
   workflow_dispatch:     # Allows manual trigger
-
+ 
 jobs:
   close-stale-prs:
     runs-on: ubuntu-latest
-
+    permissions:
+      issues: write  # R
     steps:
       - name: Close PRs with label 'Stale'
         uses: actions/github-script@v7
