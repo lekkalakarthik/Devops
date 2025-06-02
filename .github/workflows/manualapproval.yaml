@@ -1,0 +1,33 @@
+name: Manual Approval
+
+on:
+  push:
+    branches:
+      - master
+  
+  workflow_dispatch:  # ➜ Allows manual trigger
+
+jobs:
+  terraform-plan:
+    name: No approver stage
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Sample Step
+        run: echo "Testing debug"
+
+  terraform-apply:
+    name: need approval
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    needs: terraform-plan
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Approved satge
+        run: echo "Approve completed"
