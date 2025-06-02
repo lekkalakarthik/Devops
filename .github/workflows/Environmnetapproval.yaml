@@ -1,4 +1,4 @@
-name: Terraform CI/CD
+name: Env Approval
 
 on:
   push:
