@@ -1,0 +1,35 @@
+name: Terraform CI/CD
+
+on:
+  push:
+    branches:
+      - master
+
+  workflow_dispatch:
+
+jobs:
+  terraform-plan:
+    name: No approver stage
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Sample Step
+        run: echo "Testing debug"
+
+  terraform-apply:
+    name: Needs Approval
+    runs-on: ubuntu-latest
+    environment:
+      name: prod         # 👈 You will define this environment in GitHub
+      # Optionally: Add required reviewers in UI
+
+    needs: terraform-plan
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Approved stage
+        run: echo "Approve completed"
