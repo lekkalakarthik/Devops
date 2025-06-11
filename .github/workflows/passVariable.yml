@@ -1,0 +1,23 @@
+name: Pass variable
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.setver.outputs.version }}
+    steps:
+      - name: Set version
+        id: setver
+        # Correct output setting method
+        run: echo "version=1.0.3" >> $GITHUB_OUTPUT
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Print version
+        # Correct output reference syntax
+        run: echo "Version from build job: ${{ needs.build.outputs.version }}"
