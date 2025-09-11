@@ -1,0 +1,25 @@
+name: Run Python with Inputs
+
+on:
+  workflow_dispatch:   # Allows manual trigger with inputs
+    inputs:
+      name:
+        description: "Enter your name"
+        required: true
+        default: "Karthik"
+      city:
+        description: "Enter your city"
+        required: true
+        default: "Hyderabad"
+
+jobs:
+  run-python:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+
+      - name: Print the values
+        run: |
+          echo "Name: ${{ github.event.inputs.name }}"
+          echo "City: ${{ github.event.inputs.city }}"
