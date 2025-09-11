@@ -1,7 +1,7 @@
 import requests
 
 # Replace these with your details
-GITHUB_TOKEN = "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"   # GitHub Personal Access Token with repo/workflow scope
+GITHUB_TOKEN = ""   # GitHub Personal Access Token with repo/workflow scope
 OWNER = "lekkalakarthik"
 REPO = "Devops"
 WORKFLOW_FILE = "sample.yaml"   # name of your workflow yaml in .github/workflows/
