@@ -1,0 +1,9 @@
+provisioner "powershell" {
+  inline = [
+    "Stop-Service Sense -ErrorAction SilentlyContinue",
+    "Set-Service Sense -StartupType Disabled -ErrorAction SilentlyContinue",
+    "Remove-Item 'HKLM:\\SOFTWARE\\Microsoft\\Windows Advanced Threat Protection' -Recurse -Force -ErrorAction SilentlyContinue",
+    "Remove-Item 'HKLM:\\SYSTEM\\CurrentControlSet\\Services\\Sense' -Recurse -Force -ErrorAction SilentlyContinue",
+    "& $env:SystemRoot\\System32\\Sysprep\\Sysprep.exe /oobe /generalize /quiet /shutdown"
+  ]
+}
