@@ -1,0 +1,27 @@
+name: Restart WAAgent
+
+on:
+  workflow_dispatch:
+
+jobs:
+  restart-waagent:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Restart WAAgent on VM
+        run: |
+          az vm run-command invoke \
+            --command-id RunShellScript \
+            --name <VMName> \
+            --resource-group <ResourceGroup> \
+            --scripts "
+              if [ ! -f /usr/bin/python ]; then ln -s /usr/bin/python3 /usr/bin/python; fi
+              systemctl daemon-reload
+              systemctl enable waagent || systemctl enable WALinuxAgent
+              systemctl restart waagent || systemctl restart WALinuxAgent
+              systemctl status waagent || systemctl status WALinuxAgent
+            "
