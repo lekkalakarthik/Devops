@@ -1,0 +1,35 @@
+- name: Azure VM Inventory
+  shell: bash
+  env:
+    ENVIRONMENT: ${{ inputs.environment }}
+  run: |
+    set -euo pipefail
+
+    echo "Running VM inventory for environment: $ENVIRONMENT"
+
+    az extension add --name resource-graph -y
+
+    az graph query -q "
+    Resources
+    | where type =~ 'microsoft.compute/virtualmachines'
+    | where tags['nt:environment'] == '$ENVIRONMENT'
+    | extend
+        vmId = id,
+        vmName = name,
+        resourceGroup = resourceGroup,
+        osType = tostring(properties.storageProfile.osDisk.osType),
+        powerState = tostring(properties.extended.instanceView.powerState.code),
+        subscriptionId = subscriptionId,
+        tla = tostring(tags['nt:tla'])
+    | join kind=leftouter (
+        Resources
+        | where type =~ 'microsoft.network/networkinterfaces'
+        | mv-expand ipconfig = properties.ipConfigurations
+        | project
+            vmId = tostring(properties.virtualMachine.id),
+            privateIP = tostring(ipconfig.properties.privateIPAddress)
+      ) on vmId
+    | project vmName, privateIP, osType, powerState, resourceGroup, subscriptionId, tla
+    " --output tsv > vm_inventory.tsv
+
+    tr '\t' ',' < vm_inventory.tsv > vm_inventory.csv
