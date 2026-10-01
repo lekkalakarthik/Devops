@@ -88,6 +88,7 @@ locals {
 ############################
 # Resource Group
 ############################
+
 # Resource group is assumed to already exist.
 # If you want Terraform to create it, uncomment this resource
 # and remove the resource_group_name variable.
@@ -147,11 +148,9 @@ resource "azurerm_network_security_group" "nsg" {
     direction                  = "Inbound"
     access                     = "Allow"
     protocol                   = "Tcp"
-
-    source_port_range      = "*"
-    destination_port_range = "22"
-
-    source_address_prefix      = "*"
+    source_port_range          = "*"
+    destination_port_range     = "22"
+    source_address_prefix     = "*"
     destination_address_prefix = "*"
   }
 }
@@ -169,8 +168,7 @@ resource "azurerm_network_interface" "nic" {
     name                          = "internal"
     subnet_id                     = azurerm_subnet.subnet.id
     private_ip_address_allocation = "Dynamic"
-
-    public_ip_address_id = azurerm_public_ip.pip.id
+    public_ip_address_id          = azurerm_public_ip.pip.id
   }
 }
 
