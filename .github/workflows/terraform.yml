@@ -90,7 +90,7 @@ jobs:
           ls
           cd DokcerApp
           ls
-          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/myapp:latest ./Dockerfile
+          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/myapp:latest .
             
 
       - name: Push Docker Image
