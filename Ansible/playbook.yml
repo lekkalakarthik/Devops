@@ -1,0 +1,37 @@
+---
+- name: Deploy application to Azure VM
+  hosts: all
+  become: true
+
+  tasks:
+
+    - name: Install Docker
+      ansible.builtin.apt:
+        name: docker.io
+        state: present
+        update_cache: true
+
+    - name: Start Docker
+      ansible.builtin.service:
+        name: docker
+        state: started
+        enabled: true
+
+    - name: Pull application image
+      community.docker.docker_image:
+        name: "{{ docker_image }}"
+        source: pull
+
+    - name: Stop existing application container
+      community.docker.docker_container:
+        name: myapp
+        state: absent
+
+    - name: Run application container
+      community.docker.docker_container:
+        name: myapp
+        image: "{{ docker_image }}"
+        state: started
+        restart_policy: unless-stopped
+        published_ports:
+          - "80:5000"
