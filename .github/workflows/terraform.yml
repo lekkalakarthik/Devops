@@ -89,9 +89,8 @@ jobs:
         run: |
           pwd
           ls
-          docker build \
-            -t ${{ secrets.DOCKERHUB_USERNAME }}/myapp:latest \
-            .
+          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/myapp:latest ./Dockerfile
+            
 
       - name: Push Docker Image
         run: |
