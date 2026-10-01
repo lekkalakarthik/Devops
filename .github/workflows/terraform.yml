@@ -150,7 +150,7 @@ jobs:
         id: vm_ip
         run: |
           VM_IP=$(az vm list-ip-addresses \
-            --resource-group kml_rg_main-82b78f8686044449 \
+            --resource-group kml_rg_main-95c566bd1f814df4 \
             --name KIRAN \
             --query "[0].virtualMachine.network.publicIpAddresses[0].ipAddress" \
             --output tsv)
