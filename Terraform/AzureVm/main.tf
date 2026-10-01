@@ -7,12 +7,12 @@ terraform {
   }
 
   # Remote state can be enabled later
-  # backend "azurerm" {
-  #   resource_group_name  = "kml_rg_main-fe7569ba327d436a"
-  #   storage_account_name = "terraformstatefiles12345"
-  #   container_name       = "terraformstatefiles"
-  #   key                  = "prod.terraform.tfstate"
-  # }
+  backend "azurerm" {
+     resource_group_name  = "kml_rg_main-95c566bd1f814df4"
+     storage_account_name = "terraformstatefiles12345"
+     container_name       = "terraformstatefiles"
+     key                  = "prod.terraform.tfstate"
+   }
 }
 
 # Azure Provider
