@@ -110,17 +110,28 @@ jobs:
       - terraform
       - docker
 
+    env:
+      ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
+      ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
+      ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+
     steps:
 
-      # ------------------------------------------------------
-      # Checkout repository
-      # ------------------------------------------------------
       - name: Checkout
         uses: actions/checkout@v4
 
-      # ------------------------------------------------------
-      # Install Ansible
-      # ------------------------------------------------------
+    
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: |
+            {
+              "clientId": "${{ secrets.ARM_CLIENT_ID }}",
+              "clientSecret": "${{ secrets.ARM_CLIENT_SECRET }}",
+              "tenantId": "${{ secrets.ARM_TENANT_ID }}",
+              "subscriptionId": "${{ secrets.ARM_SUBSCRIPTION_ID }}"
+            }
       - name: Install Ansible
         run: |
           sudo apt-get update
@@ -134,16 +145,6 @@ jobs:
           echo '${{ secrets.SSH_KEY }}' > private_key
           chmod 600 private_key
 
-      # ------------------------------------------------------
-      # Get Azure VM Public IP
-      # ------------------------------------------------------
-      - name: Azure Login
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.ARM_CLIENT_ID }}
-          tenant-id: ${{ secrets.ARM_TENANT_ID }}
-          subscription-id: ${{ secrets.ARM_SUBSCRIPTION_ID }}
-          client-secret: ${{ secrets.ARM_CLIENT_SECRET }}
 
       - name: Get VM Public IP
         id: vm_ip
