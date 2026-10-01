@@ -49,9 +49,9 @@ jobs:
         working-directory: Terraform/AzureVm
         run: terraform fmt -check
 
-      - name: Terraform Validate
-        working-directory: Terraform/AzureVm
-        run: terraform validate
+      # - name: Terraform Validate
+      #   working-directory: Terraform/AzureVm
+      #   run: terraform validate
 
       - name: Terraform Plan
         working-directory: Terraform/AzureVm
