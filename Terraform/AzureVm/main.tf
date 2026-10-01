@@ -71,7 +71,7 @@ variable "name" {
 
 variable "resource_group_name" {
   type    = string
-  default = "kml_rg_main-82b78f8686044449"
+  default = "kml_rg_main-95c566bd1f814df4"
 }
 
 ############################
