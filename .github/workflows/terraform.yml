@@ -1,3 +1,4 @@
+```yaml
 name: Terraform and Docker
 
 on:
@@ -12,7 +13,7 @@ jobs:
   # JOB 1 - Terraform
   # ==========================================================
   terraform:
-    name: Terraform
+    name: Terraform Azure VM
     runs-on: ubuntu-latest
 
     env:
@@ -23,9 +24,15 @@ jobs:
 
     steps:
 
+      # ------------------------------------------------------
+      # Checkout repository
+      # ------------------------------------------------------
       - name: Checkout
         uses: actions/checkout@v4
 
+      # ------------------------------------------------------
+      # Azure Login
+      # ------------------------------------------------------
       - name: Azure Login
         uses: azure/login@v2
         with:
@@ -34,29 +41,48 @@ jobs:
           subscription-id: ${{ secrets.ARM_SUBSCRIPTION_ID }}
           client-secret: ${{ secrets.ARM_CLIENT_SECRET }}
 
+      # ------------------------------------------------------
+      # Setup Terraform
+      # ------------------------------------------------------
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
+      # ------------------------------------------------------
+      # Terraform Init
+      # ------------------------------------------------------
       - name: Terraform Init
+        working-directory: Terraform/AzureVm
         run: terraform init
 
+      # ------------------------------------------------------
+      # Terraform Format
+      # ------------------------------------------------------
       - name: Terraform Format
+        working-directory: Terraform/AzureVm
         run: terraform fmt -check
 
+      # ------------------------------------------------------
+      # Terraform Validate
+      # ------------------------------------------------------
       - name: Terraform Validate
+        working-directory: Terraform/AzureVm
         run: terraform validate
 
-      - name: Create SSH Public Key
-        run: |
-          echo '${{ secrets.SSH_PUBLIC_KEY }}' > id_rsa.pub
-
+      # ------------------------------------------------------
+      # Terraform Plan
+      # ------------------------------------------------------
       - name: Terraform Plan
+        working-directory: Terraform/AzureVm
         run: |
           terraform plan \
-            -var="ssh_public_key_path=${{ github.workspace }}/id_rsa.pub" \
+            -var="ssh_public_key_path=${{ github.workspace }}/keys/id_rsa.pub" \
             -out=tfplan
 
+      # ------------------------------------------------------
+      # Terraform Apply
+      # ------------------------------------------------------
       - name: Terraform Apply
+        working-directory: Terraform/AzureVm
         run: terraform apply -auto-approve tfplan
 
 
@@ -69,22 +95,36 @@ jobs:
 
     steps:
 
+      # ------------------------------------------------------
+      # Checkout repository
+      # ------------------------------------------------------
       - name: Checkout
         uses: actions/checkout@v4
 
+      # ------------------------------------------------------
+      # Login to Docker Hub
+      # ------------------------------------------------------
       - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+      # ------------------------------------------------------
+      # Build Docker Image
+      # ------------------------------------------------------
       - name: Build Docker Image
+        working-directory: DokerApp
         run: |
           docker build \
             -t ${{ secrets.DOCKERHUB_USERNAME }}/myapp:latest \
             .
 
+      # ------------------------------------------------------
+      # Push Docker Image
+      # ------------------------------------------------------
       - name: Push Docker Image
         run: |
           docker push \
             ${{ secrets.DOCKERHUB_USERNAME }}/myapp:latest
+```
