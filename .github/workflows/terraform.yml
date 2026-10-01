@@ -86,7 +86,7 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Build Docker Image
-        working-directory: DokerApp
+        working-directory: DockerApp 
         run: |
           docker build \
             -t ${{ secrets.DOCKERHUB_USERNAME }}/myapp:latest \
