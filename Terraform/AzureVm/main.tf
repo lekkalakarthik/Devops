@@ -54,6 +54,11 @@ variable "vm_size" {
   default = "Standard_B2s"
 }
 
+variable "ssh_public_key_path" {
+  type        = string
+  description = "Path to SSH public key file"
+}
+
 variable "admin_username" {
   type    = string
   default = "azureuser"
