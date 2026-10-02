@@ -108,7 +108,7 @@ locals {
 ############################
 
 resource "azurerm_virtual_network" "vnet" {
-  name                = "vm-vnet2"
+  name                = "vm-vnet3"
   address_space       = ["10.0.0.0/16"]
   location            = var.location
   resource_group_name = local.resource_group_name
@@ -130,7 +130,7 @@ resource "azurerm_subnet" "subnet" {
 ############################
 
 resource "azurerm_public_ip" "pip" {
-  name                = "vm-public-ip2"
+  name                = "vm-public-ip23"
   location            = var.location
   resource_group_name = local.resource_group_name
 
@@ -143,7 +143,7 @@ resource "azurerm_public_ip" "pip" {
 ############################
 
 resource "azurerm_network_security_group" "nsg" {
-  name                = "vm-nsg2"
+  name                = "vm-nsg32"
   location            = var.location
   resource_group_name = local.resource_group_name
 
@@ -165,7 +165,7 @@ resource "azurerm_network_security_group" "nsg" {
 ############################
 
 resource "azurerm_network_interface" "nic" {
-  name                = "vm-nic2"
+  name                = "vm-nic23"
   location            = var.location
   resource_group_name = local.resource_group_name
 
