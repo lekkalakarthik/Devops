@@ -8,7 +8,7 @@ terraform {
 
   # Remote state can be enabled later
   backend "azurerm" {
-     resource_group_name  = "kml_rg_main-95c566bd1f814df4"
+     resource_group_name  = "kml_rg_main-3be56b6f43394b53"
      storage_account_name = "terraformstatefiles12345"
      container_name       = "terraformstatefiles"
      key                  = "prod.terraform.tfstate"
